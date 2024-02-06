@@ -14,7 +14,7 @@ class DBSCANSupport:
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
 
 
-    def __init__(self, test_data, test_zone=(-180, 180, -90, 90), sheet="new mask") -> None:
+    def __init__(self, test_data, test_zone=(-90, 90, -180, 180), sheet="new mask") -> None:
         """
         Initializes the DBSCANSupport class
         Parameters
@@ -23,7 +23,7 @@ class DBSCANSupport:
             Path to the test data
         test_zone : array-like
             Area of that the algorithm is being trained on in the form
-            [min_lat, max_lat, min_lon, max_lon]
+            [min_lat, max_lat, min_lon, max_lon]; default is the whole world
         sheet : str
             Name of the sheet in the excel file to read from
         """
@@ -70,7 +70,7 @@ class DBSCANSupport:
             labels_set = set(db.labels_)
             labels = db.labels_
             num_clusters = len(labels_set) - (1 if -1 in labels else 0)
-            if num_clusters < 2 or num_clusters > 10:
+            if num_clusters < 2:
                 if verbose:
                     print(f"{epsi} and {samp} produced too few clusters")
                 continue
