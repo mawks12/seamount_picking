@@ -1,7 +1,7 @@
 """
 Supporting code for debscan algorithm
 """
-from copy import copy
+from math import atan2
 from itertools import product
 from sklearn.cluster import DBSCAN
 import pandas as pd
@@ -12,15 +12,20 @@ class DBSCANSupport:
     Class containing tester functions for DBSCAN algorithm
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
+    RADIUS = 6371  # radius of the earth in km
 
 
-    def __init__(self, test_data, test_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
+    def __init__(self, test_data, fast=False, test_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
         Initializes the DBSCANSupport class
         Parameters
         ----------
         test_data : str
             Path to the test data
+        fast : bool
+            Determines which distance function to use; default is False
+            False will use more acruate haversine distance, True will use
+            faster pythagorean distance
         test_zone : array-like
             Area of that the algorithm is being trained on in the form
             [min_lat, max_lat, min_lon, max_lon]; default is the whole world
@@ -28,16 +33,82 @@ class DBSCANSupport:
             Name of the sheet in the excel file to read from
         """
         self.seamounts = pd.read_excel(test_data, sheet_name=sheet)
-        self.seamounts = self.seamounts.drop(columns=["VGG Height", "Radius", "base_depth", "-",
+        self.seamounts = self.seamounts.drop(columns=["VGG Height", "base_depth", "-",
                                             "Name", "Charted", "surface_depth"])  # drop unneeded columns
-        self.seamounts = self.seamounts[(self.seamounts["Latitude"] >= test_zone[0]) &  # filter out points not in test zone
+        self.seamounts = self.seamounts[(self.seamounts["Latitude"] >= test_zone[0]) &  # filter points out of test zone
                                         (self.seamounts["Latitude"] <= test_zone[1]) &
                                         (self.seamounts["Longitude"] >= test_zone[2]) &
                                         (self.seamounts["Longitude"] <= test_zone[3])]
         self.num_seamounts = self.seamounts.shape[0]
         self.points = self.seamounts.to_numpy()
-        self.global_points_set = set(map(tuple, map(lambda x: (round(x[0], 3), round(x[1], 3)), self.points)))  # set of true seamounts
+        self.global_points_set = set(map(tuple, self.points))  # set of true seamounts
+        self.distance = DBSCANSupport._haversine if not fast else DBSCANSupport._pythagorean  # distance function to use
 
+    @staticmethod
+    def _haversine(lat1, lon1, lat2, lon2) -> float:
+        """
+        Calculates the haversine distance between two points
+        Parameters
+        ----------
+        lat1 : float
+            Latitude of the first point
+        lon1 : float
+            Longitude of the first point
+        lat2 : float
+            Latitude of the second point
+        lon2 : float
+            Longitude of the second point
+        Returns
+        -------
+        float
+            Haversine distance between the two points in km
+        """
+        lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+        c = 2 * atan2(np.sqrt(a), np.sqrt(1 - a))
+        return DBSCANSupport.RADIUS * c
+
+    @staticmethod
+    def _pythagorean(lat1, lon1, lat2, lon2) -> float:
+        """
+        Calculates the pythagorean distance between two points
+        Parameters
+        ----------
+        lat1 : float
+            Latitude of the first point
+        lon1 : float
+            Longitude of the first point
+        lat2 : float
+            Latitude of the second point
+        lon2 : float
+            Longitude of the second point
+        Returns
+        -------
+        float
+            Pythagorean distance between the two points in km
+        """
+        x = (lon2 - lon1) * np.cos((lat1 + lat2) / 2)
+        y = lat2 - lat1
+        return np.sqrt(x ** 2 + y ** 2) * DBSCANSupport.RADIUS
+
+    def trueSeamount(self, test_points) -> int: # TODO: write hash function to hash points to unit disks on euclidean plane for faster search
+        """
+        Checks if the point is a true seamount
+        Parameters
+        ----------
+        points : array-like
+            Point to check if it is a true seamount
+        Returns
+        -------
+        int
+            1 if true seamount else 0
+        """
+        for i in self.points:
+            if self.distance(i[0], i[1], test_points[0], test_points[1]) <= i[2]:
+                return 1
+        return -1
 
     def gridSearch(self, eps_vals, samp_vals, data, test, verbose=False, maxlim=False):
         """
@@ -108,7 +179,6 @@ class DBSCANSupport:
         """
         label_count = np.int64((len(labels) - (1 if -1 in labels else 0)))  # number of clusters
         classified = np.insert(data, 2, labels, axis=1)  # add labels to data
-        print(classified)
         precent_true = self.num_seamounts / classified.shape[0]  # precent of data that is actualy seamounts
         value, frequency = np.unique(labels, return_counts=True)
         value_counts = np.vstack((value, frequency)).T  # create frequency table of labels
@@ -117,21 +187,10 @@ class DBSCANSupport:
             # Identifies clusters that occur to frequently to be consitered seamounts
             if count / label_count > cluster_max_lim:
                 classified = classified[classified[:, 2] != val]
-        model_labels = np.array([[round(i[0], 3),  # Rounding to 3 decimal places to match the true seamounts
-                                  round(i[1], 3)] for i in classified])  # get lat long of each model labeled seamount
-        points_set = copy(self.global_points_set)  # set of true seamounts for modification
-        model_labels = set(map(tuple, model_labels))
-        last_len = len(points_set)  # number of points that start in points
-        false_positives = 0
-        true_positives = 0
-        for i in model_labels:  # Itterate through model labels and check if they are in points
-            points_set.add(tuple(i))
-            if len(points_set) > last_len:  # If the point was not in points then it is a false positive
-                last_len = len(points_set)
-                false_positives += 1
-            else:
-                true_positives += 1
-        return (true_positives - false_positives) / len(self.points)
+        average = 0
+        for i in classified:  # Itterate through model labels and check if they are in points
+            average += self.trueSeamount(i)
+        return average / len(self.points)
 
     def outlierDeviation(self, data, labels) -> float:
         """
@@ -153,38 +212,10 @@ class DBSCANSupport:
         """
         classified = np.insert(data, 2, labels, axis=1)
         classified = classified[classified[:, 2] == -1]  # get only the outliers
-        model_labels = np.array([[round(i[0], 3),  # Rounding to 3 decimal places to match the true seamounts
-                                  round(i[1], 3)] for i in classified])  # get lat long of each model labeled seamount
-        points_set = copy(self.global_points_set)  # set of true seamounts for modification
-        model_labels = set(map(tuple, model_labels))
-        last_len = len(points_set)  # number of points that start in points
-        false_positives = 0
-        true_positives = 0
-        for i in model_labels:  # Itterate through model labels and check if they are in points
-            points_set.add(tuple(i))
-            if len(points_set) > last_len:  # If the point was not in points then it is a false positive
-                last_len = len(points_set)
-                false_positives += 1
-            else:
-                true_positives += 1
-        return (true_positives - false_positives) / len(self.points)
-
-
-    def _getTruePair(self, test_point):
-        """
-        checks if the test point is a true seamount
-        Parameters
-        ----------
-        test_point : array-like
-            Point to check if it is a true seamount
-        Returns
-        -------
-        int
-            1 if true seamount else 0
-        """
-        if any(np.equal(self.points,[round(test_point[0], 3), round(test_point[0], 3)]).all(1)): # type: ignore
-            return 1
-        return 0
+        average = 0
+        for i in classified:  # Itterate through model labels and check if they are in points
+            average += self.trueSeamount(i)
+        return average / len(self.points)
 
     def matchPoints(self, out_data) -> None:
         """
@@ -197,4 +228,4 @@ class DBSCANSupport:
         -------
         None
         """
-        out_data["True_Seamount"] = out_data.apply(lambda x:(self._getTruePair((x.Longitude, x.Latitude))), axis=1)
+        out_data["True_Seamount"] = out_data.apply(lambda x:(self.trueSeamount((x.Longitude, x.Latitude))), axis=1)

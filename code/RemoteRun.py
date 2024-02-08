@@ -11,7 +11,7 @@ test_eps = np.linspace(0.5, 1, 5)
 test_samp = np.arange(25, 30)
 scnsprt = DBSCANSupport("/Users/martinhawks/Code/Git_repos/seamount_picking/data/sample_mask.txt.xlsx")
 
-score, params, data_out  = scnsprt.gridSearch(test_eps, test_samp, scale_x, scnsprt.seamountDeviation, verbose=True)
+score, params, data_out  = scnsprt.gridSearch(test_eps, test_samp, scale_x, scnsprt.autoDeviation, verbose=True)
 
 data_out = pd.DataFrame({'Longitude': data_out[:, 0], 'Latitude': data_out[:, 1], 'Intensity': data_out[:, 2], 'score': data_out[:, 3]})
 
