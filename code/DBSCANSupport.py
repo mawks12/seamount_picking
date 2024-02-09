@@ -45,7 +45,7 @@ class DBSCANSupport:
         self.distance = DBSCANSupport._haversine if not fast else DBSCANSupport._pythagorean  # distance function to use
 
     @staticmethod
-    def _haversine(lat1, lon1, lat2, lon2) -> float:
+    def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """
         Calculates the haversine distance between two points
         Parameters
@@ -106,7 +106,7 @@ class DBSCANSupport:
             1 if true seamount else 0
         """
         for i in self.points:
-            if self.distance(i[0], i[1], test_points[0], test_points[1]) <= i[2]:
+            if self.distance(i[1], i[0], test_points[0], test_points[1]) <= i[2]:
                 return 1
         return -1
 
@@ -142,11 +142,14 @@ class DBSCANSupport:
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
             num_clusters = len(labels_set) - (1 if -1 in labels else 0)  # number of clusters
-            if num_clusters < (2 if (test != self.outlierDeviation) else 1) or num_clusters > (num_clusters + 1 if not maxlim else maxlim):
-                # outlierDeviation can have fewer than 2 clusters, but not less than 1, and seccond condition is to check if there is a max limit
+            if num_clusters < (2 if (test != self.outlierDeviation) else 1) or \
+                  num_clusters > (num_clusters + 1 if not maxlim else maxlim):
+                # outlierDeviation can have fewer than 2 clusters, but not less than 1,
+                # and seccond condition is to check if there is a max limit
                 if verbose:
                     print(f"{epsi} and {samp} produced " + \
-                          ("too few" if num_clusters < 2 else f'{num_clusters - 2} too many') + " clusters")
+                          (f"{num_clusters} (too few)" if num_clusters < 2 else \
+                           f'{num_clusters} (too many)') + " clusters")
                 continue
             score = test(data, db.labels_)
             if verbose:
@@ -229,3 +232,14 @@ class DBSCANSupport:
         None
         """
         out_data["True_Seamount"] = out_data.apply(lambda x:(self.trueSeamount((x.Longitude, x.Latitude))), axis=1)
+
+
+
+# Testing Code
+if __name__ == "__main__":
+    from LocalPath import LOCALPATH
+    test_eps = np.linspace(0.5, 1, 1)
+    test_samp = np.arange(38, 40)
+    scale_x = pd.read_csv(LOCALPATH + 'data/test_grav.csv').drop(columns=["old_ind"]).to_numpy()
+    DBModel_test = DBSCANSupport(LOCALPATH+"data/sample_mask.txt.xlsx", test_zone=(-6, -1.5, -98, -90))
+    score, params, data_out  = DBModel_test.gridSearch(test_eps, test_samp, scale_x, DBModel_test.outlierDeviation, verbose=True)
