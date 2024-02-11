@@ -237,9 +237,5 @@ class DBSCANSupport:
         """
         out_data["True_Seamount"] = out_data.apply(lambda x:(self.trueSeamount((x.Longitude, x.Latitude))), axis=1)
 
-
-
-# Testing Code
 if __name__ == "__main__":
-    #raise RuntimeError("DBSCANSupport is a library and should not be run as main")
-    pass
+    raise RuntimeError("DBSCANSupport is a library and should not be run as main")
