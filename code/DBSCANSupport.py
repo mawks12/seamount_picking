@@ -1,5 +1,5 @@
 """
-Supporting code for debscan algorithm
+Supporting code for DBSCAN algorithm
 """
 from math import atan2
 from itertools import product
