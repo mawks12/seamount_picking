@@ -4,6 +4,7 @@ Supporting code for debscan algorithm
 from math import atan2
 from itertools import product
 from sklearn.cluster import DBSCAN
+import scipy.spatial as sps
 import pandas as pd
 import numpy as np
 
@@ -40,7 +41,8 @@ class DBSCANSupport:
                                         (self.seamounts["Longitude"] >= test_zone[2]) &
                                         (self.seamounts["Longitude"] <= test_zone[3])]
         self.num_seamounts = self.seamounts.shape[0]
-        self.points = self.seamounts.to_numpy()
+        self.points = self.seamounts.drop(columns=["Radius"]).to_numpy()
+        self.p_neighbors = sps.KDTree(self.points)
         self.global_points_set = set(map(tuple, self.points))  # set of true seamounts
         self.distance = DBSCANSupport._haversine if not fast else DBSCANSupport._pythagorean  # distance function to use
 
@@ -93,7 +95,7 @@ class DBSCANSupport:
         y = lat2 - lat1
         return np.sqrt(x ** 2 + y ** 2) * DBSCANSupport.RADIUS
 
-    def trueSeamount(self, test_points) -> int: # TODO: write hash function to hash points to unit disks on euclidean plane for faster search
+    def trueSeamount(self, test_points) -> int:
         """
         Checks if the point is a true seamount
         Parameters
@@ -105,9 +107,11 @@ class DBSCANSupport:
         int
             1 if true seamount else 0
         """
-        for i in self.points:
-            if self.distance(i[1], i[0], test_points[0], test_points[1]) <= i[2]:
-                return 1
+        nearest = self.p_neighbors.query([test_points[0], test_points[1]])
+        dist = self.distance(nearest[0], nearest[1], test_points[0], test_points[1])
+        found = self.points[(self.points[:,0] == nearest[0]) & (self.points[:,1] == nearest[1])]
+        if dist > found[2]:  # TODO: Hash this so the runtime improvement is worth it
+            return 1
         return -1
 
     def gridSearch(self, eps_vals, samp_vals, data, test, verbose=False, maxlim=False):
@@ -237,4 +241,5 @@ class DBSCANSupport:
 
 # Testing Code
 if __name__ == "__main__":
-    raise RuntimeError("DBSCANSupport is a library and should not be run as main")
+    #raise RuntimeError("DBSCANSupport is a library and should not be run as main")
+    pass
