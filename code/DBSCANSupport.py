@@ -153,7 +153,7 @@ class DBSCANSupport:
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
             num_clusters = len(labels_set) - (1 if -1 in labels else 0)  # number of clusters
-            if num_clusters < (2 if not (test is self.outlierDeviation) else 1) or \
+            if num_clusters < (2 if (test != self.outlierDeviation) else 1) or \
                 num_clusters > (num_clusters + 1 if not maxlim else maxlim):
                 # outlierDeviation can have fewer than 2 clusters, but not less than 1,
                 # and seccond condition is to check if there is a max limit
