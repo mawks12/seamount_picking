@@ -112,12 +112,13 @@ class DBSCANSupport:
             1 if true seamount else 0
         """
         _, i = self.p_neighbors.query([test_points[0], test_points[1]])
-        nearest = self.__points[i]
+        nearest = self.__points[i]  # Get nearest point from KDTree index
         radius = self.seamount_dict.get((nearest[0], nearest[1]), -1)
-        if radius == -1:
+        if radius == -1:  # Error checking - all points should be found in seamounts_dict
             print(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
         dist = self.distance(nearest[0], nearest[1], test_points[0], test_points[1])
-        if dist < radius:
+        # Use distance function to find total distance and check if it is within the radius
+        if dist <= radius:
             return 1
         return -1
 
@@ -165,7 +166,7 @@ class DBSCANSupport:
             score = test(data, db.labels_)
             if verbose:
                 print(f"Score for {epsi} and {samp} is {score}")
-            if score > best_score:
+            if score > best_score: # Update output parameters if the score is better
                 best_score = score
                 best_params = (epsi, samp)
                 best_labels = np.insert(data, 2, labels, axis=1)  # add labels to data
