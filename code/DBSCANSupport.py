@@ -40,10 +40,14 @@ class DBSCANSupport:
                                         (self.seamounts["Latitude"] <= test_zone[1]) &
                                         (self.seamounts["Longitude"] >= test_zone[2]) &
                                         (self.seamounts["Longitude"] <= test_zone[3])]
+        self.seamounts = self.seamounts[['Latitude', 'Longitude', 'Radius']]
         self.num_seamounts = self.seamounts.shape[0]
-        self.points = self.seamounts.drop(columns=["Radius"]).to_numpy()
-        self.p_neighbors = sps.KDTree(self.points)
-        self.global_points_set = set(map(tuple, self.points))  # set of true seamounts
+        self.__points = self.seamounts.to_numpy()  # get points
+        self.seamount_dict = dict(zip(zip(self.__points[:, 0], self.__points[:, 1]), \
+                                      self.__points[:, 2]))
+        # dictionary of true seamounts and radii for faster distance checking
+        self.p_neighbors = sps.KDTree(self.__points[:, :2])
+        self.global_points_set = set(map(tuple, self.__points))  # set of true seamounts
         self.distance = DBSCANSupport._haversine if not fast else DBSCANSupport._pythagorean  # distance function to use
 
     @staticmethod
@@ -95,22 +99,25 @@ class DBSCANSupport:
         y = lat2 - lat1
         return np.sqrt(x ** 2 + y ** 2) * DBSCANSupport.RADIUS
 
-    def trueSeamount(self, test_points) -> int:
+    def _trueSeamount(self, test_points) -> int:
         """
         Checks if the point is a true seamount
         Parameters
         ----------
         points : array-like
-            Point to check if it is a true seamount
+            Point to check if it is a true seamount of the form [lat, lon]
         Returns
         -------
         int
             1 if true seamount else 0
         """
-        nearest = self.p_neighbors.query([test_points[0], test_points[1]])
+        _, i = self.p_neighbors.query([test_points[0], test_points[1]])
+        nearest = self.__points[i]
+        radius = self.seamount_dict.get((nearest[0], nearest[1]), -1)
+        if radius == -1:
+            print(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
         dist = self.distance(nearest[0], nearest[1], test_points[0], test_points[1])
-        found = self.points[(self.points[:,0] == nearest[0]) & (self.points[:,1] == nearest[1])]
-        if dist > found[2]:  # TODO: Hash this so the runtime improvement is worth it
+        if dist < radius:
             return 1
         return -1
 
@@ -146,8 +153,8 @@ class DBSCANSupport:
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
             num_clusters = len(labels_set) - (1 if -1 in labels else 0)  # number of clusters
-            if num_clusters < (2 if (test != self.outlierDeviation) else 1) or \
-                  num_clusters > (num_clusters + 1 if not maxlim else maxlim):
+            if num_clusters < (2 if not (test is self.outlierDeviation) else 1) or \
+                num_clusters > (num_clusters + 1 if not maxlim else maxlim):
                 # outlierDeviation can have fewer than 2 clusters, but not less than 1,
                 # and seccond condition is to check if there is a max limit
                 if verbose:
@@ -196,8 +203,8 @@ class DBSCANSupport:
                 classified = classified[classified[:, 2] != val]
         average = 0
         for i in classified:  # Itterate through model labels and check if they are in points
-            average += self.trueSeamount(i)
-        return average / len(self.points)
+            average += self._trueSeamount(i)
+        return average / self.num_seamounts
 
     def outlierDeviation(self, data, labels) -> float:
         """
@@ -221,8 +228,8 @@ class DBSCANSupport:
         classified = classified[classified[:, 2] == -1]  # get only the outliers
         average = 0
         for i in classified:  # Itterate through model labels and check if they are in points
-            average += self.trueSeamount(i)
-        return average / len(self.points)
+            average += self._trueSeamount(i)
+        return average / self.num_seamounts
 
     def matchPoints(self, out_data) -> None:
         """
@@ -235,7 +242,7 @@ class DBSCANSupport:
         -------
         None
         """
-        out_data["True_Seamount"] = out_data.apply(lambda x:(self.trueSeamount((x.Longitude, x.Latitude))), axis=1)
+        out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Latitude, x.Longitude))), axis=1)
 
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")
