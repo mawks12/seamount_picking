@@ -237,9 +237,4 @@ class DBSCANSupport:
 
 # Testing Code
 if __name__ == "__main__":
-    from LocalPath import LOCALPATH
-    test_eps = np.linspace(0.5, 1, 1)
-    test_samp = np.arange(38, 40)
-    scale_x = pd.read_csv(LOCALPATH + 'data/test_grav.csv').drop(columns=["old_ind"]).to_numpy()
-    DBModel_test = DBSCANSupport(LOCALPATH+"data/sample_mask.txt.xlsx", test_zone=(-6, -1.5, -98, -90))
-    score, params, data_out  = DBModel_test.gridSearch(test_eps, test_samp, scale_x, DBModel_test.outlierDeviation, verbose=True)
+    raise RuntimeError("DBSCANSupport is a library and should not be run as main")
