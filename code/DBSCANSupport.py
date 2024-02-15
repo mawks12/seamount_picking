@@ -64,14 +64,19 @@ class DBSCANSupport(_SeamountSupport):
         best_params = (0.1, 1)
         best_labels = np.array([np.array([0])])
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
+        if test == "auto":
+            classifier = self.__autoFilter
+        else:
+            classifier = DBSCANSupport.__outlierFilter
         for epsi, samp in params:  # itterate through all possible parameter combinations
             db = DBSCAN(eps=epsi, min_samples=samp)
             db.fit(data)
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
             num_clusters = len(labels_set) - (1 if -1 in labels else 0)  # number of clusters
-            if num_clusters < (2 if not (test is self.outlierDeviation) else 1) or \
-                num_clusters > (num_clusters + 1 if not maxlim else maxlim):
+            max_clusters = (num_clusters + 1 if not maxlim else maxlim)
+            min_clusters = (2 if not (test is self.__autoFilter) else 1)
+            if num_clusters < min_clusters or num_clusters > max_clusters:
                 # outlierDeviation can have fewer than 2 clusters, but not less than 1,
                 # and seccond condition is to check if there is a max limit
                 if verbose:
@@ -79,7 +84,7 @@ class DBSCANSupport(_SeamountSupport):
                           (f"{num_clusters} (too few)" if num_clusters < 2 else \
                            f'{num_clusters} (too many)') + " clusters")
                 continue
-            score = test(data, db.labels_)
+            score = self.deviation(data, db.labels_, classifier)
             if verbose:
                 print(f"Score for {epsi} and {samp} is {score}")
             if score > best_score:
@@ -116,56 +121,6 @@ class DBSCANSupport(_SeamountSupport):
             classified = self.__autoFilter(data, labels)
         else:
             classified = DBSCANSupport.__outlierFilter(data, labels)
-        average = 0
-        for i in classified:  # Itterate through model labels and check if they are in points
-            average += self._trueSeamount(i)
-        return average / self.num_seamounts
-
-    def autoDeviation(self, data, labels) -> float:
-        """
-        Calculates the deviation of output seamount
-        classifications from the true seamounts using the
-        fomula (true_positives - false_positives) / total_points
-
-        Parameters
-        ----------
-        data : array-like
-            Data that the algorithm has been fitted to
-        labels : array-like
-            Cluster labels for each point in data
-        test_zone : array-like
-            Area of that the algorithm is being trained on in the form
-            [min_lat, max_lat, min_lon, max_lon]    
-        Returns
-        -------
-        deviation : float
-            Deviation of output seamount classifications from true
-        """
-        classified = self.__autoFilter(data, labels)  # get only the clusters that are small enough
-        average = 0
-        for i in classified:  # Itterate through model labels and check if they are in points
-            average += self._trueSeamount(i)
-        return average / self.num_seamounts
-
-    def outlierDeviation(self, data, labels) -> float:
-        """
-        Calculates the deviation of output seamount
-        classifications from the true seamounts using the
-        fomula (true_positives - false_positives) / total_points
-        and outliers as seamout cluster category
-
-        Parameters
-        ----------
-        data : array-like
-            Data that the algorithm has been fitted to
-        labels : array-like
-            Cluster labels for each point in data
-        Returns
-        -------
-        deviation : float
-            Deviation of output seamount classifications from true
-        """
-        classified = DBSCANSupport.__outlierFilter(data, labels) # get only the outliers
         average = 0
         for i in classified:  # Itterate through model labels and check if they are in points
             average += self._trueSeamount(i)
