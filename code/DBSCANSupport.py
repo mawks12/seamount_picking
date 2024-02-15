@@ -260,7 +260,5 @@ class DBSCANSupport(_SeamountSupport):
         clissifier = self.__autoFilter if test == "auto" else DBSCANSupport.__outlierFilter
         return self.deviation(test_data, db.labels_, clissifier, valid)  # type: ignore
 
-
-
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")
