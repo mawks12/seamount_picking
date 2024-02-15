@@ -1,14 +1,16 @@
 """
 Supporting code for DBSCAN algorithm
 """
-from math import atan2
+
 from itertools import product
 from sklearn.cluster import DBSCAN
 import scipy.spatial as sps
 import pandas as pd
 import numpy as np
+from _SeamountSupport import _SeamountSupport
 
-class DBSCANSupport:
+
+class DBSCANSupport(_SeamountSupport):
     """
     Class containing tester functions for DBSCAN algorithm
     """
@@ -33,93 +35,8 @@ class DBSCANSupport:
         sheet : str
             Name of the sheet in the excel file to read from
         """
-        self.seamounts = pd.read_excel(test_data, sheet_name=sheet)
-        self.seamounts = self.seamounts.drop(columns=["VGG Height", "base_depth", "-",
-                                            "Name", "Charted", "surface_depth"])  # drop unneeded columns
-        self.seamounts = self.seamounts[(self.seamounts["Latitude"] >= test_zone[0]) &  # filter points out of test zone
-                                        (self.seamounts["Latitude"] <= test_zone[1]) &
-                                        (self.seamounts["Longitude"] >= test_zone[2]) &
-                                        (self.seamounts["Longitude"] <= test_zone[3])]
-        self.seamounts = self.seamounts[['Latitude', 'Longitude', 'Radius']]
-        self.num_seamounts = self.seamounts.shape[0]
-        self.__points = self.seamounts.to_numpy()  # get points
-        self.seamount_dict = dict(zip(zip(self.__points[:, 0], self.__points[:, 1]), \
-                                      self.__points[:, 2]))
-        # dictionary of true seamounts and radii for faster distance checking
-        self.p_neighbors = sps.KDTree(self.__points[:, :2])
-        self.global_points_set = set(map(tuple, self.__points))  # set of true seamounts
-        self.distance = DBSCANSupport._haversine if not fast else DBSCANSupport._pythagorean  # distance function to use
-
-    @staticmethod
-    def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """
-        Calculates the haversine distance between two points
-        Parameters
-        ----------
-        lat1 : float
-            Latitude of the first point
-        lon1 : float
-            Longitude of the first point
-        lat2 : float
-            Latitude of the second point
-        lon2 : float
-            Longitude of the second point
-        Returns
-        -------
-        float
-            Haversine distance between the two points in km
-        """
-        lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
-        c = 2 * atan2(np.sqrt(a), np.sqrt(1 - a))
-        return DBSCANSupport.RADIUS * c
-
-    @staticmethod
-    def _pythagorean(lat1, lon1, lat2, lon2) -> float:
-        """
-        Calculates the pythagorean distance between two points
-        Parameters
-        ----------
-        lat1 : float
-            Latitude of the first point
-        lon1 : float
-            Longitude of the first point
-        lat2 : float
-            Latitude of the second point
-        lon2 : float
-            Longitude of the second point
-        Returns
-        -------
-        float
-            Pythagorean distance between the two points in km
-        """
-        x = (lon2 - lon1) * np.cos((lat1 + lat2) / 2)
-        y = lat2 - lat1
-        return np.sqrt(x ** 2 + y ** 2) * DBSCANSupport.RADIUS
-
-    def _trueSeamount(self, test_points) -> int:
-        """
-        Checks if the point is a true seamount
-        Parameters
-        ----------
-        points : array-like
-            Point to check if it is a true seamount of the form [lat, lon]
-        Returns
-        -------
-        int
-            1 if true seamount else 0
-        """
-        _, i = self.p_neighbors.query([test_points[0], test_points[1]])
-        nearest = self.__points[i]
-        radius = self.seamount_dict.get((nearest[0], nearest[1]), -1)
-        if radius == -1:
-            print(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
-        dist = self.distance(nearest[0], nearest[1], test_points[0], test_points[1])
-        if dist < radius:
-            return 1
-        return -1
+        super().__init__(test_data, fast, test_zone, sheet)
+        self.end_params = (0.1, 1)  # default parameters for the end of the grid search
 
     def gridSearch(self, eps_vals, samp_vals, data, test, verbose=False, maxlim=False):
         """
@@ -169,7 +86,40 @@ class DBSCANSupport:
                 best_score = score
                 best_params = (epsi, samp)
                 best_labels = np.insert(data, 2, labels, axis=1)  # add labels to data
+        self.end_params = best_params
         return best_score, best_params, best_labels
+
+    def deviation(self, data, labels, classifier, valid=False):
+        """
+        Calculates the deviation of output seamount
+        classifications from the true seamounts using the
+        fomula (true_positives - false_positives) / total_points
+        and the filter variable to determine how to assign clusters
+        Parameters
+        ----------
+        data : array-like
+            Data that the algorithm has been fitted to
+        labels : array-like
+            Cluster labels for each point in data
+        filter : function
+            Function to filter clusters
+        valid : bool | np.ndarray
+            If false, will default to using the pre assinged
+            validation data, else will use the data provided
+        """
+        if not valid:
+            valid = self.p_neighbors
+        else:
+            __points = valid
+            valid = sps.KDTree(__points[:, :2])  # type: ignore
+        if classifier == "auto":
+            classified = self.__autoFilter(data, labels)
+        else:
+            classified = DBSCANSupport.__outlierFilter(data, labels)
+        average = 0
+        for i in classified:  # Itterate through model labels and check if they are in points
+            average += self._trueSeamount(i)
+        return average / self.num_seamounts
 
     def autoDeviation(self, data, labels) -> float:
         """
@@ -191,16 +141,7 @@ class DBSCANSupport:
         deviation : float
             Deviation of output seamount classifications from true
         """
-        label_count = np.int64((len(labels) - (1 if -1 in labels else 0)))  # number of clusters
-        classified = np.insert(data, 2, labels, axis=1)  # add labels to data
-        precent_true = self.num_seamounts / classified.shape[0]  # precent of data that is actualy seamounts
-        value, frequency = np.unique(labels, return_counts=True)
-        value_counts = np.vstack((value, frequency)).T  # create frequency table of labels
-        cluster_max_lim = precent_true + DBSCANSupport.MARGIN  # max relitive cluster size to be considered a seamount
-        for val, count in value_counts:
-            # Identifies clusters that occur to frequently to be consitered seamounts
-            if count / label_count > cluster_max_lim:
-                classified = classified[classified[:, 2] != val]
+        classified = self.__autoFilter(data, labels)  # get only the clusters that are small enough
         average = 0
         for i in classified:  # Itterate through model labels and check if they are in points
             average += self._trueSeamount(i)
@@ -224,12 +165,55 @@ class DBSCANSupport:
         deviation : float
             Deviation of output seamount classifications from true
         """
-        classified = np.insert(data, 2, labels, axis=1)
-        classified = classified[classified[:, 2] == -1]  # get only the outliers
+        classified = DBSCANSupport.__outlierFilter(data, labels) # get only the outliers
         average = 0
         for i in classified:  # Itterate through model labels and check if they are in points
             average += self._trueSeamount(i)
         return average / self.num_seamounts
+
+    def __autoFilter(self, data, labels): # pylint: disable=invalid-name
+        """
+        Selects clusters that are small enough to be
+        consitered potential seamounts
+        Parameters
+        ----------
+        data : array-like
+            Data that the algorithm has been fitted to
+        labels : array-like
+            Cluster labels for each point in data
+        Returns
+        -------
+        classified : np.ndarray
+        """
+        label_count = np.int64((len(labels) - (1 if -1 in labels else 0)))  # number of clusters
+        classified = np.insert(data, 2, labels, axis=1)  # add labels to data
+        precent_true = self.num_seamounts / classified.shape[0]  # precent of data that is actualy seamounts
+        value, frequency = np.unique(labels, return_counts=True)
+        value_counts = np.vstack((value, frequency)).T  # create frequency table of labels
+        cluster_max_lim = precent_true + DBSCANSupport.MARGIN  # max relitive cluster size to be considered a seamount
+        for val, count in value_counts:
+            # Identifies clusters that occur to frequently to be consitered seamounts
+            if count / label_count > cluster_max_lim:
+                classified = classified[classified[:, 2] != val]
+        return classified
+
+    @staticmethod
+    def __outlierFilter(data, labels) -> np.ndarray: # pylint: disable=invalid-name
+        """
+        Filters out the outliers from the data
+        Parameters
+        ----------
+        data : array-like
+            Data that the algorithm has been fitted to
+        labels : array-like
+            Cluster labels for each point in data
+        Returns
+        -------
+        filtered : np.ndarray
+            Filtered data
+        """
+        classified = np.insert(data, 2, labels, axis=1)
+        return classified[classified[:, 2] == -1]
 
     def matchPoints(self, out_data) -> None:
         """
@@ -243,6 +227,40 @@ class DBSCANSupport:
         None
         """
         out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Latitude, x.Longitude))), axis=1)
+
+    def scoreTestData(self, data_range, path, params, test_data, *args, test="outlier") -> float:
+        """
+        Scores the test data
+        Parameters
+        ----------
+        path : str
+            Path to the test data
+        params : tuple
+            Parameters for the DBSCAN algorithm
+        test_data : array-like
+            Data test algorithm on
+        data_range : array-like
+            Range of data to score of the form [min_lat, max_lat, min_lon, max_lon]
+        test : function
+            Function to test clustering
+        Returns
+        -------
+        score : float
+            Score of the test data
+        """
+        valid = pd.read_excel(path, sheet_name=self.sheet)
+        valid = valid.drop(columns=["VGG Height", "base_depth", "-",
+                                            "Name", "Charted", "surface_depth"])
+        valid = valid[(valid["Latitude"] >= data_range[0]) &  # filter for testing zone
+                                        (valid["Latitude"] <= data_range[1]) &
+                                        (valid["Longitude"] >= data_range[2]) &
+                                        (valid["Longitude"] <= data_range[3])]
+        db = DBSCAN(eps=params[0], min_samples=params[1])
+        db.fit(test_data)
+        clissifier = self.__autoFilter if test == "auto" else DBSCANSupport.__outlierFilter
+        return self.deviation(test_data, db.labels_, clissifier, valid)  # type: ignore
+
+
 
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")
