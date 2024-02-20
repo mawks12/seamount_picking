@@ -5,7 +5,6 @@ Supporting code for DBSCAN algorithm
 from itertools import product
 from sklearn.cluster import DBSCAN
 import scipy.spatial as sps
-import pandas as pd
 import numpy as np
 from _SeamountSupport import _SeamountSupport
 
@@ -13,12 +12,15 @@ from _SeamountSupport import _SeamountSupport
 class DBSCANSupport(_SeamountSupport):
     """
     Class containing tester functions for DBSCAN algorithm
+    Converts lat long to UTM coordinates for euclidean distance 
+    algorithms, and but currently only works with one UTM zone
+    at a time # TODO: Update to work with more
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
 
 
-    def __init__(self, test_data, fast=False, test_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
+    def __init__(self, test_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
         Initializes the DBSCANSupport class
         Parameters
@@ -35,7 +37,8 @@ class DBSCANSupport(_SeamountSupport):
         sheet : str
             Name of the sheet in the excel file to read from
         """
-        super().__init__(test_data, fast, test_zone, sheet)
+        super().__init__(test_data, train_zone, sheet)
+        self.zone_number = 15  # TODO: remove hardcoding
         self.end_params = (0.1, 1)  # default parameters for the end of the grid search
 
     def gridSearch(self, eps_vals, samp_vals, data, test, verbose=False, maxlim=False):
@@ -60,7 +63,7 @@ class DBSCANSupport(_SeamountSupport):
         best_labels : ndarray[ndarray[float, float, int]]
             Labeled data that produced the best score
         """
-        best_score = -1000000
+        best_score = -1000000.0
         best_params = (0.1, 1)
         best_labels = np.array([np.array([0])])
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
@@ -181,7 +184,7 @@ class DBSCANSupport(_SeamountSupport):
         -------
         None
         """
-        out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Latitude, x.Longitude))), axis=1)
+        out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Easting, x.Northing))), axis=1)
 
     def scoreTestData(self, data_range, path, params, test_data, *args, test="outlier") -> float:
         """
@@ -203,13 +206,8 @@ class DBSCANSupport(_SeamountSupport):
         score : float
             Score of the test data
         """
-        valid = pd.read_excel(path, sheet_name=self.sheet)
-        valid = valid.drop(columns=["VGG Height", "base_depth", "-",
-                                            "Name", "Charted", "surface_depth"])
-        valid = valid[(valid["Latitude"] >= data_range[0]) &  # filter for testing zone
-                                        (valid["Latitude"] <= data_range[1]) &
-                                        (valid["Longitude"] >= data_range[2]) &
-                                        (valid["Longitude"] <= data_range[3])]
+        _ = args
+        valid = self._filterData(path, data_range)
         db = DBSCAN(eps=params[0], min_samples=params[1])
         db.fit(test_data)
         clissifier = self.__autoFilter if test == "auto" else DBSCANSupport.__outlierFilter
