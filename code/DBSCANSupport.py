@@ -8,6 +8,7 @@ import scipy.spatial as sps
 import numpy as np
 from _SeamountSupport import _SeamountSupport
 
+######### use haversine on lat long? #########
 
 class DBSCANSupport(_SeamountSupport):
     """
@@ -38,7 +39,6 @@ class DBSCANSupport(_SeamountSupport):
             Name of the sheet in the excel file to read from
         """
         super().__init__(test_data, train_zone, sheet)
-        self.zone_number = 15  # TODO: remove hardcoding
         self.end_params = (0.1, 1)  # default parameters for the end of the grid search
 
     def gridSearch(self, eps_vals, samp_vals, data, test, verbose=False, maxlim=False):
@@ -63,9 +63,9 @@ class DBSCANSupport(_SeamountSupport):
         best_labels : ndarray[ndarray[float, float, int]]
             Labeled data that produced the best score
         """
-        best_score = -1000000.0
-        best_params = (0.1, 1)
-        best_labels = np.array([np.array([0])])
+        best_score = float(-1000000)
+        best_params = (-1, -1)
+        best_labels = np.insert(data, 2, np.repeat(np.nan, data.shape[0]), axis=1)
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
         if test == "auto":
             classifier = self.__autoFilter
@@ -84,17 +84,19 @@ class DBSCANSupport(_SeamountSupport):
                 # and seccond condition is to check if there is a max limit
                 if verbose:
                     print(f"{epsi} and {samp} produced " + \
-                          (f"{num_clusters} (too few)" if num_clusters < 2 else \
+                          (f"{num_clusters} (too few)" if num_clusters < min_clusters else \
                            f'{num_clusters} (too many)') + " clusters")
                 continue
             score = self.deviation(data, db.labels_, classifier)
             if verbose:
                 print(f"Score for {epsi} and {samp} is {score}")
-            if score > best_score:
+            if score > best_score and score != 0:
                 best_score = score
                 best_params = (epsi, samp)
                 best_labels = np.insert(data, 2, labels, axis=1)  # add labels to data
         self.end_params = best_params
+        if self.end_params == (-1, -1):
+            raise ValueError("Error: No valid parameters found")
         return best_score, best_params, best_labels
 
     def deviation(self, data, labels, classifier, valid=False):
@@ -172,19 +174,6 @@ class DBSCANSupport(_SeamountSupport):
         """
         classified = np.insert(data, 2, labels, axis=1)
         return classified[classified[:, 2] == -1]
-
-    def matchPoints(self, out_data) -> None:
-        """
-        adds values to indicate if the point is a true seamount
-        Parameters
-        ----------
-        out_data : pd.DataFrame
-            Data to add values to
-        Returns
-        -------
-        None
-        """
-        out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Easting, x.Northing))), axis=1)
 
     def scoreTestData(self, data_range, path, params, test_data, *args, test="outlier") -> float:
         """

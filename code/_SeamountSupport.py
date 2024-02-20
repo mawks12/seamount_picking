@@ -21,6 +21,7 @@ class _SeamountSupport:
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
+    ZONE_NUMBER = 15  # TODO: remove hardcoding
 
     def __init__(self, validation_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
@@ -44,6 +45,7 @@ class _SeamountSupport:
         self.seamounts = self._filterData(validation_data, train_zone)
         self.num_seamounts = self.seamounts.shape[0]
         self.__points = self.seamounts.to_numpy()  # get points
+        #assert self.__points.shape[0] != 0, "Error: Data not in correct format"
         self.seamount_dict = dict(zip(zip(self.__points[:, 0], self.__points[:, 1]), \
                                       self.__points[:, 2]))
         # dictionary of true seamounts and radii for faster distance checking
@@ -68,8 +70,9 @@ class _SeamountSupport:
         nearest = self.__points[i]
         radius = self.seamount_dict.get((nearest[0], nearest[1]), -1)
         if radius == -1:
-            print(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
+            raise ValueError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
         dist = self.distance(nearest[0], nearest[1], test_points[0], test_points[1])
+        #print(f"Distance: {dist}, Radius: {radius}, Test: {test_points[0]}, {test_points[1]}, Seamount: {nearest[0]}, {nearest[1]}")
         if dist < radius:
             return 1
         return -1
@@ -93,14 +96,27 @@ class _SeamountSupport:
                                         (validation_data["Longitude"] >= data_range[2]) &
                                         (validation_data["Longitude"] <= data_range[3])]
         # Convert seamounts lat long to UTM coordinates to work with euclidean centric algorithms
-        validation_data['Easting'], validation_data['Northing'], validation_data['Zone_Letter'], \
-            validation_data['Zone_Number'] = zip(*validation_data.apply(lambda row: utm.from_latlon( \
+        validation_data['Easting'], validation_data['Northing'], validation_data['Zone_Number'], \
+            validation_data['Zone_Letter'] = zip(*validation_data.apply(lambda row: utm.from_latlon( \
                 row['Latitude'], row['Longitude']), axis=1))
         # TODO: Update to work with more than one UTM zone at a time
         validation_data  = validation_data[["Easting", "Northing", "Radius", \
-                                           "Latitude", "Longitude", "Zone_Letter", "Zone_Number"]]
-        validation_data = validation_data[validation_data["Zone_Number"] == self.zone_number]
+                                           "Latitude", "Longitude", "Zone_Number", "Zone_Letter"]]
+        validation_data = validation_data[validation_data["Zone_Number"] == _SeamountSupport.ZONE_NUMBER]
         return validation_data
+    
+    def matchPoints(self, out_data) -> None:
+        """
+        adds values to indicate if the point is a true seamount
+        Parameters
+        ----------
+        out_data : pd.DataFrame
+            Data to add values to
+        Returns
+        -------
+        None
+        """
+        out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Easting, x.Northing))), axis=1)
 
     @abstractmethod
     def scoreTestData(self, data_range: tuple, path, params, test_data,  *args) -> float:
@@ -164,9 +180,9 @@ class _SeamountSupport:
         float
             Pythagorean distance between the two points in km
         """
-        x = (lon2 - lon1) * np.cos((lat1 + lat2) / 2)
+        x = lon2 - lon1
         y = lat2 - lat1
-        return np.sqrt(x ** 2 + y ** 2) * 1000
+        return np.sqrt(x ** 2 + y ** 2) / 1000
 
     @staticmethod
     def formatData(data, zval) -> np.ndarray:
@@ -184,8 +200,9 @@ class _SeamountSupport:
             Formatted data
         """
         data = data[['Latitude', 'Longitude', zval]]
-        data['Easting'], data['Northing'], data['Zone_Letter'], \
-            data['Zone_Number'] = zip(*data.apply(lambda row: utm.from_latlon( \
+        data['Easting'], data['Northing'], data['Zone_Number'], \
+            data['Zone_Letter'] = zip(*data.apply(lambda row: utm.from_latlon( \
                 row['Latitude'], row['Longitude']), axis=1))
+        data = data[data["Zone_Number"] == _SeamountSupport.ZONE_NUMBER]
         data = data[["Easting", "Northing", zval]]
         return data.to_numpy()
