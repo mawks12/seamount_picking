@@ -4,11 +4,8 @@ Supporting code for DBSCAN algorithm
 
 from itertools import product
 from sklearn.cluster import DBSCAN
-import scipy.spatial as sps
 import numpy as np
 from _SeamountSupport import _SeamountSupport
-
-######### use haversine on lat long? #########
 
 class DBSCANSupport(_SeamountSupport):
     """
@@ -21,7 +18,7 @@ class DBSCANSupport(_SeamountSupport):
     RADIUS = 6371  # radius of the earth in km
 
 
-    def __init__(self, test_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
+    def __init__(self, test_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask", test='auto') -> None:
         """
         Initializes the DBSCANSupport class
         Parameters
@@ -39,9 +36,10 @@ class DBSCANSupport(_SeamountSupport):
             Name of the sheet in the excel file to read from
         """
         super().__init__(test_data, train_zone, sheet)
-        self.end_params = (0.1, 1)  # default parameters for the end of the grid search
+        self.end_params = None  # values of the best parameters
+        self.test = test
 
-    def gridSearch(self, eps_vals, samp_vals, data, test, verbose=False, maxlim=False):
+    def gridSearch(self, eps_vals, samp_vals, verbose=False, maxlim=False):
         """
         Performs grid search on DBSCAN parameters
         Parameters
@@ -63,43 +61,45 @@ class DBSCANSupport(_SeamountSupport):
         best_labels : ndarray[ndarray[float, float, int]]
             Labeled data that produced the best score
         """
-        best_score = float(-1000000)
-        best_params = (-1, -1)
-        best_labels = np.insert(data, 2, np.repeat(np.nan, data.shape[0]), axis=1)
+        if self.training_data is None:
+            raise AttributeError("Training data has not been added to the class yet")
+        best_score = -100000000
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
-        if test == "auto":
+        if self.test == "auto":
             classifier = self.__autoFilter
         else:
             classifier = DBSCANSupport.__outlierFilter
         for epsi, samp in params:  # itterate through all possible parameter combinations
             db = DBSCAN(eps=epsi, min_samples=samp)
-            db.fit(data)
+            db.fit(self.training_data)
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
-            num_clusters = len(labels_set) - (1 if -1 in labels else 0)  # number of clusters
+            num_clusters = (len(labels_set) - (1 if -1 in labels else 0)) \
+                if not classifier is DBSCANSupport.__outlierFilter else len(labels_set)  # number of clusters
             max_clusters = (num_clusters + 1 if not maxlim else maxlim)
-            min_clusters = (2 if not (test is self.__autoFilter) else 1)
+            min_clusters = 2
             if num_clusters < min_clusters or num_clusters > max_clusters:
                 # outlierDeviation can have fewer than 2 clusters, but not less than 1,
                 # and seccond condition is to check if there is a max limit
                 if verbose:
                     print(f"{epsi} and {samp} produced " + \
-                          (f"{num_clusters} (too few)" if num_clusters < min_clusters else \
-                           f'{num_clusters} (too many)') + " clusters")
+                          (f"too few {labels_set}" if num_clusters < min_clusters else \
+                           f'too many {labels_set}') + " clusters")
                 continue
-            score = self.deviation(data, db.labels_, classifier)
+            score = self.deviation(self.training_data, db.labels_, classifier)
             if verbose:
-                print(f"Score for {epsi} and {samp} is {score}")
+                print(f"Score for {epsi} and {samp} is {score} with {labels_set} clusters")
             if score > best_score and score != 0:
                 best_score = score
-                best_params = (epsi, samp)
-                best_labels = np.insert(data, 2, labels, axis=1)  # add labels to data
-        self.end_params = best_params
-        if self.end_params == (-1, -1):
-            raise ValueError("Error: No valid parameters found")
-        return best_score, best_params, best_labels
+                self.end_params = (epsi, samp)
+                best_labels = labels  # add labels to data
+        if self.end_params is None:
+            raise ValueError("No valid parameters found")
+        best_labels = np.insert(
+            self.datascaler.inverse_transform(self.training_data), 2, best_labels, axis=1)  # type: ignore
+        return best_score, self.end_params, best_labels
 
-    def deviation(self, data, labels, classifier, valid=False):
+    def deviation(self, data, labels, classifier):
         """
         Calculates the deviation of output seamount
         classifications from the true seamounts using the
@@ -113,20 +113,16 @@ class DBSCANSupport(_SeamountSupport):
             Cluster labels for each point in data
         filter : function
             Function to filter clusters
+        classifier : function
+            Function to classify clusters
         valid : bool | np.ndarray
             If false, will default to using the pre assinged
             validation data, else will use the data provided
         """
-        if not valid:
-            valid = self.p_neighbors
-        else:
-            __points = valid
-            valid = sps.KDTree(__points[:, :2])  # type: ignore
-        if classifier == "auto":
-            classified = self.__autoFilter(data, labels)
-        else:
-            classified = DBSCANSupport.__outlierFilter(data, labels)
+        classified = classifier(data, labels)
         average = 0
+        if len(classified) == 0:
+            raise ValueError("Classifier returned no valid clusters")
         for i in classified:  # Itterate through model labels and check if they are in points
             average += self._trueSeamount(i)
         return average / self.num_seamounts
@@ -175,32 +171,25 @@ class DBSCANSupport(_SeamountSupport):
         classified = np.insert(data, 2, labels, axis=1)
         return classified[classified[:, 2] == -1]
 
-    def scoreTestData(self, data_range, path, params, test_data, *args, test="outlier") -> float:
+    def scoreTestData(self, path) -> float:
         """
         Scores the test data
         Parameters
         ----------
         path : str
             Path to the test data
-        params : tuple
-            Parameters for the DBSCAN algorithm
-        test_data : array-like
-            Data test algorithm on
-        data_range : array-like
-            Range of data to score of the form [min_lat, max_lat, min_lon, max_lon]
-        test : function
-            Function to test clustering
         Returns
         -------
         score : float
             Score of the test data
         """
-        _ = args
-        valid = self._filterData(path, data_range)
-        db = DBSCAN(eps=params[0], min_samples=params[1])
+        test_data = self._filterData(path, self.train_zone, csv=True)
+        if self.end_params is None:
+            raise AttributeError("Testing has not been done")
+        db = DBSCAN(eps=self.end_params[0], min_samples=self.end_params[1])
         db.fit(test_data)
-        clissifier = self.__autoFilter if test == "auto" else DBSCANSupport.__outlierFilter
-        return self.deviation(test_data, db.labels_, clissifier, valid)  # type: ignore
+        classifier = self.__autoFilter if self.test == "auto" else DBSCANSupport.__outlierFilter
+        return self.deviation(test_data, db.labels_, classifier)  # type: ignore
 
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")

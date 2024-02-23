@@ -8,6 +8,7 @@ import scipy.spatial as sps
 import pandas as pd
 import numpy as np
 import utm
+from sklearn.preprocessing import StandardScaler
 
 
 class _SeamountSupport:
@@ -42,21 +43,68 @@ class _SeamountSupport:
         """
         self.sheet = sheet
         self.validation_path = validation_data
-        self.seamounts = self._filterData(validation_data, train_zone)
-        self.num_seamounts = self.seamounts.shape[0]
-        self.__points = self.seamounts.to_numpy()  # get points
-        #assert self.__points.shape[0] != 0, "Error: Data not in correct format"
-        self.seamount_dict = dict(zip(zip(self.__points[:, 0], self.__points[:, 1]), \
-                                      self.__points[:, 2]))
-        # dictionary of true seamounts and radii for faster distance checking
-        self.p_neighbors = sps.KDTree(self.__points[:, :2])
-        self.global_points_set = set(map(tuple, self.__points))  # set of true seamounts
+        self.train_zone = train_zone
+        seamounts = self._filterData(self.validation_path, self.train_zone)
+        self.num_seamounts = seamounts.shape[0]
         self.distance = _SeamountSupport._pythagorean  # distance function
         self.zone_number = 15  # TODO: remove hardcoding
+        self.datascaler = StandardScaler()
+        self.unlabled_data = None
+        self.label_hash = None
+        self.training_data = None
 
-    def _trueSeamount(self, test_points) -> int:
+    def _trueSeamount(self, test_points):
         """
-        Checks if the point is a true seamount
+        Checks if a point is a true seamount by comparing
+        it to the its hashed value
+        Parameters
+        ----------
+        test_points : array-like
+            Point to check if it is a true seamount
+        Returns
+        -------
+        int
+            1 if true seamount else -1
+        """
+        if self.unlabled_data is None or self.label_hash is None:
+            raise AttributeError("No training data has been added")
+        hashed = self.label_hash.get(tuple(test_points), 0)
+        if hashed == 0:
+            raise ValueError(f"{test_points} not found in training data")
+        return hashed
+
+    def addTrainingData(self, training_data: np.ndarray) -> None:
+        """
+        Adds training data to the class
+        Parameters
+        ----------
+        training_data : np.ndarray
+            Data to add to the class
+        Returns
+        -------
+        None
+        """
+        self.training_data = training_data
+        seamounts = self._filterData(self.validation_path, self.train_zone)
+        __points = seamounts.to_numpy()  # get points
+        #assert self.__points.shape[0] != 0, "Error: Data not in correct format"
+        seamount_dict = dict(zip(zip(__points[:, 0], __points[:, 1]), \
+                                      __points[:, 2]))
+        # dictionary of true seamounts and radii for faster distance checking
+        p_neighbors = sps.KDTree(__points[:, :2])
+        for i in range(self.training_data.shape[0]):
+            self.training_data[i][3] = _SeamountSupport._radiusMatch(
+                training_data[i], p_neighbors, __points, seamount_dict)
+        self.datascaler.fit(training_data[:, :3])
+        self.unlabled_data = self.datascaler.transform(training_data[:, :3])
+        assert isinstance(self.unlabled_data, np.ndarray), "Data must be a numpy array"
+        self.label_hash = dict(zip(map(tuple, self.unlabled_data), training_data[:, 3]))
+
+    @staticmethod
+    def _radiusMatch(test_points, tree, points, query) -> int:
+        """
+        Checks if the point is a true seamount using
+        the radius of the nearest seamount
         Parameters
         ----------
         points : array-like
@@ -66,18 +114,17 @@ class _SeamountSupport:
         int
             1 if true seamount else 0
         """
-        _, i = self.p_neighbors.query([test_points[0], test_points[1]])
-        nearest = self.__points[i]
-        radius = self.seamount_dict.get((nearest[0], nearest[1]), -1)
+        _, i = tree.query([test_points[0], test_points[1]])
+        nearest = points[i]
+        radius = query.get((nearest[0], nearest[1]), -1)
         if radius == -1:
             raise ValueError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
-        dist = self.distance(nearest[0], nearest[1], test_points[0], test_points[1])
-        #print(f"Distance: {dist}, Radius: {radius}, Test: {test_points[0]}, {test_points[1]}, Seamount: {nearest[0]}, {nearest[1]}")
+        dist = _SeamountSupport._pythagorean(nearest[0], nearest[1], test_points[0], test_points[1])
         if dist < radius:
             return 1
         return -1
 
-    def _filterData(self, path, data_range: tuple) -> pd.DataFrame:
+    def _filterData(self, path, data_range: tuple, csv=False) -> pd.DataFrame:
         """
         Filters the data to only include the testing zone
         Parameters
@@ -89,7 +136,10 @@ class _SeamountSupport:
         pd.DataFrame
             Filtered data
         """
-        validation_data = pd.read_excel(path, sheet_name=self.sheet)
+        if csv:
+            validation_data = pd.read_csv(path)
+        else:
+            validation_data = pd.read_excel(path, sheet_name=self.sheet)
         validation_data = validation_data[['Latitude', 'Longitude', 'Radius']]
         validation_data = validation_data[(validation_data["Latitude"] >= data_range[0]) &  # filter for testing zone
                                         (validation_data["Latitude"] <= data_range[1]) &
@@ -104,8 +154,8 @@ class _SeamountSupport:
                                            "Latitude", "Longitude", "Zone_Number", "Zone_Letter"]]
         validation_data = validation_data[validation_data["Zone_Number"] == _SeamountSupport.ZONE_NUMBER]
         return validation_data
-    
-    def matchPoints(self, out_data) -> None:
+
+    def matchPoints(self) -> pd.DataFrame:
         """
         adds values to indicate if the point is a true seamount
         Parameters
@@ -114,12 +164,14 @@ class _SeamountSupport:
             Data to add values to
         Returns
         -------
-        None
+        pd.DataFrame
+            Data with values added. True seamounts are marked with 1
+            while points that are not seamounts are marked with -1
         """
-        out_data["True_Seamount"] = out_data.apply(lambda x:(self._trueSeamount((x.Easting, x.Northing))), axis=1)
+        return pd.DataFrame(self.training_data, columns=["Easting", "Northing", "Radius", "TrueSeamount"])
 
     @abstractmethod
-    def scoreTestData(self, data_range: tuple, path, params, test_data,  *args) -> float:
+    def scoreTestData(self, path) -> float:
         """
         Scores the data on a testing zone outside of the training zone
         Parameters
