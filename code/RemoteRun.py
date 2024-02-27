@@ -1,20 +1,34 @@
+# %%
 import pandas as pd
 import numpy as np
 from DBSCANSupport import DBSCANSupport
+from LocalPath import LOCALPATH
 
-src_dir = '/Users/martinhawks/Code/Git_repos/seamount_picking/data/'  # Update to local machine
-grav =pd.read_csv(src_dir + 'test_grav.csv').drop(columns=["old_ind"])
-X = grav[['Longitude', 'Latitude', 'Intensity']].to_numpy()
+# %%
+grav = pd.read_csv(LOCALPATH + 'data/test_grav.csv').drop(columns=["old_ind"])
+grav = grav[['Latitude', 'Longitude', 'Intensity']]
 
-scale_x = X
-test_eps = np.linspace(0.5, 1, 5)
-test_samp = np.arange(25, 30)
-scnsprt = DBSCANSupport("/Users/martinhawks/Code/Git_repos/seamount_picking/data/sample_mask.txt.xlsx")
+# %%
+Z = DBSCANSupport.formatData(grav, 'Intensity')
+#Z = Z[(Z[:, 2] > -20) & (Z[:, 2] < 7)]
+data = Z
 
-score, params, data_out  = scnsprt.gridSearch(test_eps, test_samp, scale_x, scnsprt.autoDeviation, verbose=True)
+# %%
+test_eps = np.linspace(2.3, 2.8, 20)
+test_samp = np.arange(2, 7)
+DBModel_test = DBSCANSupport(LOCALPATH+"data/sample_mask.txt.xlsx", train_zone=(-6, -1.5, -98, -90))
+DBModel_test.addTrainingData(data)
 
-data_out = pd.DataFrame({'Longitude': data_out[:, 0], 'Latitude': data_out[:, 1], 'Intensity': data_out[:, 2], 'score': data_out[:, 3]})
+# %%
+score, params, data_out  = DBModel_test.gridSearch(test_eps, test_samp, verbose=True)
 
-data_out.to_csv(src_dir + 'best_test_grav_clusters.csv', index=False)
+# %%
+dfout = pd.DataFrame(data_out, columns=["Easting", "Northing", "Label", "Intensity"])
+df_labeled = dfout[dfout['Label'] == 1]
 
-
+# %%
+with open(LOCALPATH + "out/best.txt", "w") as f:
+    f.write("Score: " + str(score) + "\n")
+    f.write("Params: " + str(params) + "\n")
+DBModel_test.matchPoints().to_csv(LOCALPATH + "out/matched.csv", index=False)
+dfout.to_csv(LOCALPATH + "out/labels.csv", index=False)

@@ -61,7 +61,7 @@ class DBSCANSupport(_SeamountSupport):
         best_labels : ndarray[ndarray[float, float, int]]
             Labeled data that produced the best score
         """
-        if self.training_data is None:
+        if self.training_data is None or self.unlabled_data is None:
             raise AttributeError("Training data has not been added to the class yet")
         best_score = -100000000
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
@@ -71,7 +71,7 @@ class DBSCANSupport(_SeamountSupport):
             classifier = DBSCANSupport.__outlierFilter
         for epsi, samp in params:  # itterate through all possible parameter combinations
             db = DBSCAN(eps=epsi, min_samples=samp)
-            db.fit(self.training_data)
+            db.fit(self.unlabled_data)
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
             num_clusters = (len(labels_set) - (1 if -1 in labels else 0)) \
@@ -86,7 +86,7 @@ class DBSCANSupport(_SeamountSupport):
                           (f"too few {labels_set}" if num_clusters < min_clusters else \
                            f'too many {labels_set}') + " clusters")
                 continue
-            score = self.deviation(self.training_data, db.labels_, classifier)
+            score = self.deviation(self.unlabled_data, db.labels_, classifier)
             if verbose:
                 print(f"Score for {epsi} and {samp} is {score} with {labels_set} clusters")
             if score > best_score and score != 0:
@@ -95,7 +95,9 @@ class DBSCANSupport(_SeamountSupport):
                 best_labels = labels  # add labels to data
         if self.end_params is None:
             raise ValueError("No valid parameters found")
-        best_labels = np.insert(
+        if verbose:
+            print(f"Best score: {best_score} with parameters {self.end_params}")
+        best_labels = np.insert(  # return non scaled data
             self.datascaler.inverse_transform(self.training_data), 2, best_labels, axis=1)  # type: ignore
         return best_score, self.end_params, best_labels
 
@@ -124,7 +126,7 @@ class DBSCANSupport(_SeamountSupport):
         if len(classified) == 0:
             raise ValueError("Classifier returned no valid clusters")
         for i in classified:  # Itterate through model labels and check if they are in points
-            average += self._trueSeamount(i)
+            average += self._trueSeamount(i[0:2])
         return average / self.num_seamounts
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name

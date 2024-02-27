@@ -4,7 +4,7 @@ Basic support class for the seamount detection code
 
 from abc import abstractmethod
 from math import atan2
-import scipy.spatial as sps
+import scipy.spatial
 import pandas as pd
 import numpy as np
 import utm
@@ -85,30 +85,36 @@ class _SeamountSupport:
         None
         """
         self.training_data = training_data
+        self.datascaler.fit(training_data)
         seamounts = self._filterData(self.validation_path, self.train_zone)
         __points = seamounts.to_numpy()  # get points
-        #assert self.__points.shape[0] != 0, "Error: Data not in correct format"
         seamount_dict = dict(zip(zip(__points[:, 0], __points[:, 1]), \
                                       __points[:, 2]))
         # dictionary of true seamounts and radii for faster distance checking
-        p_neighbors = sps.KDTree(__points[:, :2])
+        p_neighbors = scipy.spatial.KDTree(__points[:, :2])
         for i in range(self.training_data.shape[0]):
             self.training_data[i][3] = _SeamountSupport._radiusMatch(
                 training_data[i], p_neighbors, __points, seamount_dict)
-        self.datascaler.fit(training_data[:, :3])
-        self.unlabled_data = self.datascaler.transform(training_data[:, :3])
-        assert isinstance(self.unlabled_data, np.ndarray), "Data must be a numpy array"
-        self.label_hash = dict(zip(map(tuple, self.unlabled_data), training_data[:, 3]))
+        self.training_data = self.datascaler.transform(training_data)
+        self.unlabled_data = self.training_data[:, :3]  # type: ignore
+        assert isinstance(self.unlabled_data, np.ndarray)
+        self.label_hash = dict(zip(map(tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
 
     @staticmethod
     def _radiusMatch(test_points, tree, points, query) -> int:
         """
-        Checks if the point is a true seamount using
-        the radius of the nearest seamount
+        Checks if a point is a true seamount by comparing
+        it to the its hashed value
         Parameters
         ----------
-        points : array-like
-            Point to check if it is a true seamount of the form [lat, lon]
+        test_points : array-like
+            Point to check if it is a true seamount
+        tree : scipy.spatial.kdtree
+            KDTree of the training data
+        points : np.ndarray
+            Training data
+        query : dict
+            Dictionary of true seamounts and radii for faster distance checking
         Returns
         -------
         int
@@ -168,7 +174,10 @@ class _SeamountSupport:
             Data with values added. True seamounts are marked with 1
             while points that are not seamounts are marked with -1
         """
-        return pd.DataFrame(self.training_data, columns=["Easting", "Northing", "Radius", "TrueSeamount"])
+        if self.training_data is None:
+            raise AttributeError("Training data has not been added to the class yet")
+        return pd.DataFrame(self.training_data,  # type: ignore
+                            columns=["Easting", "Northing", "Radius", "TrueSeamount"])
 
     @abstractmethod
     def scoreTestData(self, path) -> float:
@@ -252,9 +261,11 @@ class _SeamountSupport:
             Formatted data
         """
         data = data[['Latitude', 'Longitude', zval]]
+
         data['Easting'], data['Northing'], data['Zone_Number'], \
             data['Zone_Letter'] = zip(*data.apply(lambda row: utm.from_latlon( \
                 row['Latitude'], row['Longitude']), axis=1))
         data = data[data["Zone_Number"] == _SeamountSupport.ZONE_NUMBER]
         data = data[["Easting", "Northing", zval]]
+        data["TrueSeamount"] = np.zeros(data.shape[0])
         return data.to_numpy()
