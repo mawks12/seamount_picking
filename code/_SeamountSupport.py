@@ -7,7 +7,6 @@ from math import atan2
 import scipy.spatial
 import pandas as pd
 import numpy as np
-import utm
 from sklearn.preprocessing import StandardScaler
 
 
@@ -16,13 +15,10 @@ class _SeamountSupport:
     Basic Support class for the seamount detection code
     Contains basic training, testing, and distance functions, as well
     as all of the general static methods used in the seamount
-    detection code. Converts lat long to UTM coordinates for
-    euclidean distance algorithms, and but currently only works
-    with one UTM zone at a time  # TODO: Update to work with more
+    detection code.
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
-    ZONE_NUMBER = 15  # TODO: remove hardcoding
     FILTERTHRSH = -0.5  # threshold for filtering out points
 
     def __init__(self, validation_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
@@ -48,7 +44,6 @@ class _SeamountSupport:
         seamounts = self._filterData(self.validation_path, self.train_zone)
         self.num_seamounts = seamounts.shape[0]
         self.distance = _SeamountSupport._pythagorean  # distance function
-        self.zone_number = 15  # TODO: remove hardcoding
         self.datascaler = StandardScaler()
         self.unlabled_data = None
         self.label_hash = None
@@ -153,14 +148,7 @@ class _SeamountSupport:
                                         (validation_data["Latitude"] <= data_range[1]) &
                                         (validation_data["Longitude"] >= data_range[2]) &
                                         (validation_data["Longitude"] <= data_range[3])]
-        # Convert seamounts lat long to UTM coordinates to work with euclidean centric algorithms
-        validation_data['Easting'], validation_data['Northing'], validation_data['Zone_Number'], \
-            validation_data['Zone_Letter'] = zip(*validation_data.apply(lambda row: utm.from_latlon( \
-                row['Latitude'], row['Longitude']), axis=1))
-        # TODO: Update to work with more than one UTM zone at a time
-        validation_data  = validation_data[["Easting", "Northing", "Radius", \
-                                           "Latitude", "Longitude", "Zone_Number", "Zone_Letter"]]
-        validation_data = validation_data[validation_data["Zone_Number"] == _SeamountSupport.ZONE_NUMBER]
+        validation_data  = validation_data[["Radius", "Latitude", "Longitude"]]
         return validation_data
 
     def matchPoints(self) -> pd.DataFrame:
@@ -179,7 +167,7 @@ class _SeamountSupport:
         if self.training_data is None:
             raise AttributeError("Training data has not been added to the class yet")
         return pd.DataFrame(self.training_data,  # type: ignore
-                            columns=["Easting", "Northing", "Radius", "TrueSeamount"])
+                            columns=["Latitude", "Longitude", "Radius", "TrueSeamount"])
 
     @abstractmethod
     def scoreTestData(self, path) -> float:
@@ -263,11 +251,6 @@ class _SeamountSupport:
             Formatted data
         """
         data = data[['Latitude', 'Longitude', zval]]
-
-        data['Easting'], data['Northing'], data['Zone_Number'], \
-            data['Zone_Letter'] = zip(*data.apply(lambda row: utm.from_latlon( \
-                row['Latitude'], row['Longitude']), axis=1))
-        data = data[data["Zone_Number"] == _SeamountSupport.ZONE_NUMBER]
-        data = data[["Easting", "Northing", zval]]
+        data = data[["Latitude", "Longitude", zval]]
         data["TrueSeamount"] = np.zeros(data.shape[0])
         return data.to_numpy()
