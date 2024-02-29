@@ -23,6 +23,7 @@ class _SeamountSupport:
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
     ZONE_NUMBER = 15  # TODO: remove hardcoding
+    FILTERTHRSH = -0.5  # threshold for filtering out points
 
     def __init__(self, validation_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
@@ -96,6 +97,7 @@ class _SeamountSupport:
             self.training_data[i][3] = _SeamountSupport._radiusMatch(
                 training_data[i], p_neighbors, __points, seamount_dict)
         self.training_data = self.datascaler.transform(training_data)
+        self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSH]  # type: ignore
         self.unlabled_data = self.training_data[:, :3]  # type: ignore
         assert isinstance(self.unlabled_data, np.ndarray)
         self.label_hash = dict(zip(map(tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
