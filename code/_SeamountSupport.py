@@ -51,7 +51,7 @@ class _SeamountSupport:
         self.label_hash = None
         self.training_data = None
 
-    def _trueSeamount(self, test_points):
+    def _trueSeamount(self, test_points) -> int:
         """
         Checks if a point is a true seamount by comparing
         it to the its hashed value
@@ -68,6 +68,8 @@ class _SeamountSupport:
             raise AttributeError("No training data has been added")
         hashed = self.label_hash.get(tuple(test_points), 0)
         if hashed == 0:
+            if test_points not in self.unlabled_data[:, :2]:
+                print("HMMMM")
             raise ValueError(f"{test_points} not found in training data")
         return hashed
 
@@ -95,9 +97,13 @@ class _SeamountSupport:
                 training_data[i], p_neighbors, __points, seamount_dict)
         self.training_data = self.datascaler.transform(training_data)
         self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSH]  # type: ignore
+        #  filter out points that have too low a gravity value
         self.unlabled_data = self.training_data[:, :3]  # type: ignore
         assert isinstance(self.unlabled_data, np.ndarray)
-        self.label_hash = dict(zip(map(tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
+        self.label_hash = dict(zip(map(  # create hashtable for faster checking
+            tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
+        for i in range(self.unlabled_data.shape[0]):
+            assert list(self.label_hash.keys())[i] == tuple(self.unlabled_data[i, :2])
 
     @staticmethod
     def _radiusMatch(test_points, tree, points, query) -> int:
@@ -128,7 +134,7 @@ class _SeamountSupport:
         dist = _SeamountSupport._haversine(nearest[0], nearest[1], test_points[0], test_points[1])
         if dist < (radius - _SeamountSupport.BOUNDARY):
             return 1
-        elif dist < radius:
+        if dist < radius:
             return 0
         return -1
 
