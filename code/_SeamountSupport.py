@@ -20,6 +20,8 @@ class _SeamountSupport:
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
     FILTERTHRSH = -0.5  # threshold for filtering out points
+    BOUNDARY = 0.5  # Distance from boundary to be considered a boundary point
+    # Used in scoring so that boundary points are not penalized or rewarded
 
     def __init__(self, validation_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
@@ -118,13 +120,16 @@ class _SeamountSupport:
             1 if true seamount else 0
         """
         _, i = tree.query([test_points[0], test_points[1]])
-        nearest = points[i]
+        nearest = points[i]  # get nearest point
         radius = query.get((nearest[0], nearest[1]), -1)
-        if radius == -1:
+        if radius == -1:  # check if point is in the dictionary - all points should be
+            # if not raise an error
             raise ValueError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
-        dist = _SeamountSupport._pythagorean(nearest[0], nearest[1], test_points[0], test_points[1])
-        if dist < radius:
+        dist = _SeamountSupport._haversine(nearest[0], nearest[1], test_points[0], test_points[1])
+        if dist < (radius - _SeamountSupport.BOUNDARY):
             return 1
+        elif dist < radius:
+            return 0
         return -1
 
     def _filterData(self, path, data_range: tuple, csv=False) -> pd.DataFrame:
@@ -148,7 +153,7 @@ class _SeamountSupport:
                                         (validation_data["Latitude"] <= data_range[1]) &
                                         (validation_data["Longitude"] >= data_range[2]) &
                                         (validation_data["Longitude"] <= data_range[3])]
-        validation_data  = validation_data[["Radius", "Latitude", "Longitude"]]
+        validation_data  = validation_data[["Latitude", "Longitude", "Radius"]]
         return validation_data
 
     def matchPoints(self) -> pd.DataFrame:
@@ -239,8 +244,8 @@ class _SeamountSupport:
     def formatData(data, zval) -> np.ndarray:
         """
         Formats the data to be used in an algorithm
-        by converting to UTM coordinates and filtering
-        out the unneeded columns
+        by adding a column of zeros to the end of the data
+        for label assignment
         Parameters
         ----------
         data : pd.DataFrame
@@ -250,7 +255,6 @@ class _SeamountSupport:
         np.ndarray
             Formatted data
         """
-        data = data[['Latitude', 'Longitude', zval]]
         data = data[["Latitude", "Longitude", zval]]
         data["TrueSeamount"] = np.zeros(data.shape[0])
         return data.to_numpy()

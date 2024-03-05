@@ -17,7 +17,7 @@ class SVMSupport(_SeamountSupport):
 
     def __init__(self, validation_data, fast=False, train_zone=..., sheet: str = "new mask") -> None:
         super().__init__(validation_data, train_zone, sheet)
+        raise NotImplementedError("This class has not been implemented yet")
 
-    def scoreTestData(self, data_range: tuple, path, params, test_data, *args) -> float:
-        return super().scoreTestData(data_range, path, params, test_data, *args)  # TODO: implement this function
-    
+    def scoreTestData(self, path) -> float:
+        return super().scoreTestData(path)  # TODO: implement this function
