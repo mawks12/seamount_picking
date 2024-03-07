@@ -68,9 +68,7 @@ class _SeamountSupport:
             raise AttributeError("No training data has been added")
         hashed = self.label_hash.get(tuple(test_points), -2)
         if hashed == -2:
-            if test_points not in self.unlabled_data[:, :2]:
-                print("HMMMM")
-            raise ValueError(f"{test_points} not found in training data")
+            raise KeyError(f"{test_points} not found in training data")
         return hashed
 
     def addTrainingData(self, training_data: np.ndarray) -> None:
@@ -129,7 +127,7 @@ class _SeamountSupport:
         radius = query.get((nearest[0], nearest[1]), -10)
         if radius == -10:  # check if point is in the dictionary - all points should be
             # if not raise an error
-            raise ValueError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
+            raise KeyError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
         dist = _SeamountSupport._haversine(nearest[0], nearest[1], test_points[0], test_points[1])
         if dist < (radius - _SeamountSupport.BOUNDARY):
             return 1

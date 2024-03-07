@@ -18,7 +18,7 @@ class DBSCANSupport(_SeamountSupport):
     RADIUS = 6371  # radius of the earth in km
 
 
-    def __init__(self, test_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask", test='auto') -> None:
+    def __init__(self, test_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
         Initializes the DBSCANSupport class
         Parameters
@@ -37,7 +37,7 @@ class DBSCANSupport(_SeamountSupport):
         """
         super().__init__(test_data, train_zone, sheet)
         self.end_params = None  # values of the best parameters
-        self.test = test
+        self.test = False
 
     def gridSearch(self, eps_vals, samp_vals, verbose=False, maxlim=False):
         """
@@ -65,47 +65,57 @@ class DBSCANSupport(_SeamountSupport):
             raise AttributeError("Training data has not been added to the class yet")
         best_score = -100000000
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
-        if self.test == "auto":
-            classifier = self.__autoFilter
-        else:
-            classifier = DBSCANSupport.__outlierFilter
+        classifier = self.__autoFilter
         for epsi, samp in params:  # itterate through all possible parameter combinations
+            classifier = self.__autoFilter
             db = DBSCAN(eps=epsi, min_samples=samp)
             db.fit(self.unlabled_data)
             labels_set = set(db.labels_)  # Convert to set to identify unique labels
             labels = db.labels_
             num_clusters = (len(labels_set) - (1 if -1 in labels else 0)) \
-                if not classifier is DBSCANSupport.__outlierFilter else len(labels_set)  # number of clusters
+                if classifier is not DBSCANSupport.__outlierFilter else len(labels_set)  # number of clusters
             max_clusters = (num_clusters + 1 if not maxlim else maxlim)
-            min_clusters = 2
+            min_clusters = 1
             if num_clusters < min_clusters or num_clusters > max_clusters:
-                # outlierDeviation can have fewer than 2 clusters, but not less than 1,
-                # and seccond condition is to check if there is a max limit
                 if verbose:
                     print(f"{epsi} and {samp} produced " + \
                           (f"too few {labels_set}" if num_clusters < min_clusters else \
                            f'too many {labels_set}') + " clusters")
                 continue
-            score = self.deviation(self.unlabled_data, db.labels_, classifier)
+            if len(labels_set) == 2 and -1 in labels_set:
+                if verbose:
+                    print(f"using outlier deviation on {epsi} and {samp}")
+                    out = True
+                classifier = DBSCANSupport.__outlierFilter
+            else:
+                out = False
+            try:
+                score = self.deviation(self.unlabled_data, db.labels_, classifier)
+            except ValueError as e:
+                if verbose:
+                    print(f"{epsi} and {samp} produced an error: {e}")
+                continue
             if verbose:
                 print(f"Score for {epsi} and {samp} is {score} with {len(labels_set)} clusters")
             if score > best_score and score != 0:
                 best_score = score
                 self.end_params = (epsi, samp)
                 best_labels = labels  # add labels to data
+                self.test = out
         if self.end_params is None:
-            raise ValueError("No valid parameters found")
+            raise AttributeError("No valid parameters found")
         if verbose:
             print(f"Best score: {best_score} with parameters {self.end_params}")
         best_labels = np.insert(  # return non scaled data
             self.datascaler.inverse_transform(self.training_data), 2, best_labels, axis=1)  # type: ignore
-        return best_score, self.end_params, best_labels
+        return best_score, self.end_params, best_labels, self.test
 
     def deviation(self, data, labels, classifier):
         """
         Calculates the deviation of output seamount
         classifications from the true seamounts using the
         fomula (true_positives - false_positives) / total_points
+        - abs(num_clusters - num_seamounts) / num_clusters
         and the filter variable to determine how to assign clusters
         Parameters
         ----------
@@ -123,12 +133,18 @@ class DBSCANSupport(_SeamountSupport):
         """
         classified = classifier(data, labels)
         average = 0
+        num_true = 0
         if len(classified) == 0:
             raise ValueError("Classifier returned no valid clusters")
         for i in classified:  # Itterate through model labels and check if they are in points
-            average += self._trueSeamount(i[0:2])
+            is_mount = self._trueSeamount(i[0:2])
+            average += is_mount
+            num_true += 1 if is_mount == 1 else 0
+        if num_true == 0:
+            return -100000000
         score = average / self.num_seamounts
-        score -= abs(len(classified) - self.num_seamounts) / len(classified)
+        score -= abs(num_true - self.num_seamounts) / num_true
+        # penalize for too many or too few correct clusters to get more positives
         return score
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name
@@ -192,7 +208,7 @@ class DBSCANSupport(_SeamountSupport):
             raise AttributeError("Testing has not been done")
         db = DBSCAN(eps=self.end_params[0], min_samples=self.end_params[1])
         db.fit(test_data)
-        classifier = self.__autoFilter if self.test == "auto" else DBSCANSupport.__outlierFilter
+        classifier = self.__autoFilter if not self.test else DBSCANSupport.__outlierFilter
         return self.deviation(test_data, db.labels_, classifier)  # type: ignore
 
 if __name__ == "__main__":
