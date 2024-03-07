@@ -88,7 +88,7 @@ class DBSCANSupport(_SeamountSupport):
                 continue
             score = self.deviation(self.unlabled_data, db.labels_, classifier)
             if verbose:
-                print(f"Score for {epsi} and {samp} is {score} with {labels_set} clusters")
+                print(f"Score for {epsi} and {samp} is {score} with {len(labels_set)} clusters")
             if score > best_score and score != 0:
                 best_score = score
                 self.end_params = (epsi, samp)
@@ -126,11 +126,10 @@ class DBSCANSupport(_SeamountSupport):
         if len(classified) == 0:
             raise ValueError("Classifier returned no valid clusters")
         for i in classified:  # Itterate through model labels and check if they are in points
-            assert i[0:2] in self.unlabled_data[:, 0:2]  #  type: ignore
-            if list(i) == [0.40414796, -0.28506731]:
-                print("found point")
             average += self._trueSeamount(i[0:2])
-        return average / self.num_seamounts
+        score = average / self.num_seamounts
+        score -= abs(len(classified) - self.num_seamounts) / len(classified)
+        return score
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name
         """
@@ -156,8 +155,6 @@ class DBSCANSupport(_SeamountSupport):
             # Identifies clusters that occur to frequently to be consitered seamounts
             if count / label_count > cluster_max_lim:
                 classified = classified[classified[:, 2] != val]
-        for i in classified:
-            assert i[0:2] in self.unlabled_data[:, 0:2]  #  type: ignore
         return classified
 
     @staticmethod

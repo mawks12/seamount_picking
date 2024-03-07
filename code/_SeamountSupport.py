@@ -20,7 +20,7 @@ class _SeamountSupport:
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
     FILTERTHRSH = -0.5  # threshold for filtering out points
-    BOUNDARY = 0.5  # Distance from boundary to be considered a boundary point
+    BOUNDARY = 2  # Distance from boundary to be considered a boundary point
     # Used in scoring so that boundary points are not penalized or rewarded
 
     def __init__(self, validation_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
@@ -66,8 +66,8 @@ class _SeamountSupport:
         """
         if self.unlabled_data is None or self.label_hash is None:
             raise AttributeError("No training data has been added")
-        hashed = self.label_hash.get(tuple(test_points), 0)
-        if hashed == 0:
+        hashed = self.label_hash.get(tuple(test_points), -2)
+        if hashed == -2:
             if test_points not in self.unlabled_data[:, :2]:
                 print("HMMMM")
             raise ValueError(f"{test_points} not found in training data")
@@ -102,8 +102,7 @@ class _SeamountSupport:
         assert isinstance(self.unlabled_data, np.ndarray)
         self.label_hash = dict(zip(map(  # create hashtable for faster checking
             tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
-        for i in range(self.unlabled_data.shape[0]):
-            assert list(self.label_hash.keys())[i] == tuple(self.unlabled_data[i, :2])
+
 
     @staticmethod
     def _radiusMatch(test_points, tree, points, query) -> int:
@@ -127,8 +126,8 @@ class _SeamountSupport:
         """
         _, i = tree.query([test_points[0], test_points[1]])
         nearest = points[i]  # get nearest point
-        radius = query.get((nearest[0], nearest[1]), -1)
-        if radius == -1:  # check if point is in the dictionary - all points should be
+        radius = query.get((nearest[0], nearest[1]), -10)
+        if radius == -10:  # check if point is in the dictionary - all points should be
             # if not raise an error
             raise ValueError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
         dist = _SeamountSupport._haversine(nearest[0], nearest[1], test_points[0], test_points[1])
