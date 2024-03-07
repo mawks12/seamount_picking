@@ -142,8 +142,8 @@ class DBSCANSupport(_SeamountSupport):
             num_true += 1 if is_mount == 1 else 0
         if num_true == 0:
             return -100000000
-        score = average / self.num_seamounts
-        score -= abs(num_true - self.num_seamounts) / num_true
+        score = average / self.seamount_points  # type: ignore
+        score -= abs(num_true - self.seamount_points) / num_true  # type: ignore
         # penalize for too many or too few correct clusters to get more positives
         return score
 
@@ -163,7 +163,8 @@ class DBSCANSupport(_SeamountSupport):
         """
         label_count = np.int64((len(labels) - (1 if -1 in labels else 0)))  # number of clusters
         classified = np.insert(data, 2, labels, axis=1)  # add labels to data
-        precent_true = self.num_seamounts / classified.shape[0]  # precent of data that is actualy seamounts
+        precent_true = self.seamount_points / self.training_data.shape[0]  # type: ignore
+        # precent of data that is actualy seamounts
         value, frequency = np.unique(labels, return_counts=True)
         value_counts = np.vstack((value, frequency)).T  # create frequency table of labels
         cluster_max_lim = precent_true + DBSCANSupport.MARGIN  # max relitive cluster size to be considered a seamount

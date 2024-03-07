@@ -43,8 +43,7 @@ class _SeamountSupport:
         self.sheet = sheet
         self.validation_path = validation_data
         self.train_zone = train_zone
-        seamounts = self._filterData(self.validation_path, self.train_zone)
-        self.num_seamounts = seamounts.shape[0]
+        self.seamount_points = None
         self.distance = _SeamountSupport._pythagorean  # distance function
         self.datascaler = StandardScaler()
         self.unlabled_data = None
@@ -93,6 +92,7 @@ class _SeamountSupport:
         for i in range(self.training_data.shape[0]):
             self.training_data[i][3] = _SeamountSupport._radiusMatch(
                 training_data[i], p_neighbors, __points, seamount_dict)
+        self.seamount_points = self.training_data[self.training_data[:, 3] == 1].shape[0]
         self.training_data = self.datascaler.transform(training_data)
         self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSH]  # type: ignore
         #  filter out points that have too low a gravity value

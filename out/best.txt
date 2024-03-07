@@ -1,3 +1,6 @@
 Score: -6.02088285229202
 Params: (0.12105263157894737, 7)
 Used Outliers: False
+Score: -30.458647957988372
+Params: (0.1, 9)
+Used Outliers: False
