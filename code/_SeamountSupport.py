@@ -83,7 +83,7 @@ class _SeamountSupport:
         """
         self.training_data = training_data
         self.datascaler.fit(training_data)
-        seamounts = self._filterData(self.validation_path, self.train_zone)
+        seamounts = self.filterData(self.validation_path, self.train_zone, csv=False)
         __points = seamounts.to_numpy()  # get points
         seamount_dict = dict(zip(zip(__points[:, 0], __points[:, 1]), \
                                       __points[:, 2]))
@@ -135,7 +135,7 @@ class _SeamountSupport:
             return 0
         return -1
 
-    def _filterData(self, path, data_range: tuple, csv=False) -> pd.DataFrame:
+    def filterData(self, path, data_range: tuple, csv=False) -> pd.DataFrame:
         """
         Filters the data to only include the testing zone
         Parameters
@@ -178,15 +178,13 @@ class _SeamountSupport:
                             columns=["Latitude", "Longitude", "Radius", "TrueSeamount"])
 
     @abstractmethod
-    def scoreTestData(self, path) -> float:
+    def scoreTestData(self, test_data) -> float:
         """
         Scores the data on a testing zone outside of the training zone
         Parameters
         ----------
-        data_range : tuple
-            Range of data to score in the form (min_lat, max_lat, min_lon, max_lon)
-        args : any
-            Any additional arguments needed to score the data
+        test_data : array-like
+            Data to score
         Returns
         -------
         float

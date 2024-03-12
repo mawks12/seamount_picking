@@ -192,19 +192,18 @@ class DBSCANSupport(_SeamountSupport):
         classified = np.insert(data, 2, labels, axis=1)
         return classified[classified[:, 2] == -1]
 
-    def scoreTestData(self, path) -> float:
+    def scoreTestData(self, test_data) -> float:
         """
         Scores the test data
         Parameters
         ----------
-        path : str
-            Path to the test data
+        test_data : array-like
+            Data to score
         Returns
         -------
         score : float
             Score of the test data
         """
-        test_data = self._filterData(path, self.train_zone, csv=True)
         if self.end_params is None:
             raise AttributeError("Testing has not been done")
         db = DBSCAN(eps=self.end_params[0], min_samples=self.end_params[1])
