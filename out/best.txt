@@ -4,3 +4,30 @@ Used Outliers: False
 Score: -30.458647957988372
 Params: (0.1, 9)
 Used Outliers: False
+Score: -141.6176507341456
+Params: (0.1, 9)
+Used Outliers: False
+Score: -114.59549380683401
+Params: (0.2, 9)
+Used Outliers: False
+Score: -8.931114692182383
+Params: (0.05578947368421053, 13)
+Used Outliers: False
+Score: -26.113842436286852
+Params: (0.1, 6)
+Used Outliers: False
+Score: -8.891358864738331
+Params: (0.05000000000000001, 10)
+Used Outliers: False
+Score: -11.501869959434867
+Params: (0.020000000000000004, 2)
+Used Outliers: False
+Score: -22549.953668435035
+Params: (0.030000000000000006, 2)
+Used Outliers: False
+Score: -11.501869959434867
+Params: (0.020000000000000004, 2)
+Used Outliers: False
+Score: -8.931114692182383
+Params: (0.05578947368421053, 13)
+Used Outliers: False

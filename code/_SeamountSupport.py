@@ -19,11 +19,12 @@ class _SeamountSupport:
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
-    FILTERTHRSH = -0.5  # threshold for filtering out points
+    FILTERTHRSHMIN = -0.5  # threshold for filtering out points
+    FILTERTHRDHMAX = 28.2
     BOUNDARY = 2  # Distance from boundary to be considered a boundary point
     # Used in scoring so that boundary points are not penalized or rewarded
 
-    def __init__(self, validation_data, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
+    def __init__(self, validation_data: str, train_zone=(-90, 90, -180, 180), sheet: str="new mask") -> None:
         """
         Initializes the DBSCANSupport class
         Parameters
@@ -44,6 +45,8 @@ class _SeamountSupport:
         self.validation_path = validation_data
         self.train_zone = train_zone
         self.seamount_points = None
+        seamounts = pd.read_excel(validation_data, sheet_name=sheet)
+        self.num_seamounts = seamounts.shape[0]
         self.distance = _SeamountSupport._pythagorean  # distance function
         self.datascaler = StandardScaler()
         self.unlabled_data = None
@@ -75,12 +78,16 @@ class _SeamountSupport:
         Adds training data to the class
         Parameters
         ----------
-        training_data : np.ndarray
+        training_data : np.ndarray of the form (lat, lon, zval)
             Data to add to the class
         Returns
         -------
         None
         """
+        training_data = training_data[training_data[:, 0] >= self.train_zone[0]]  # filter for training zone
+        training_data = training_data[training_data[:, 0] <= self.train_zone[1]]
+        training_data = training_data[training_data[:, 1] >= self.train_zone[2]]
+        training_data = training_data[training_data[:, 1] <= self.train_zone[3]]
         self.training_data = training_data
         self.datascaler.fit(training_data)
         seamounts = self.filterData(self.validation_path, self.train_zone, csv=False)
@@ -94,7 +101,8 @@ class _SeamountSupport:
                 training_data[i], p_neighbors, __points, seamount_dict)
         self.seamount_points = self.training_data[self.training_data[:, 3] == 1].shape[0]
         self.training_data = self.datascaler.transform(training_data)
-        self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSH]  # type: ignore
+        self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSHMIN]  # type: ignore
+        self.training_data = self.training_data[self.training_data[:, 2] < _SeamountSupport.FILTERTHRDHMAX]
         #  filter out points that have too low a gravity value
         self.unlabled_data = self.training_data[:, :3]  # type: ignore
         assert isinstance(self.unlabled_data, np.ndarray)

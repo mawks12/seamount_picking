@@ -144,6 +144,7 @@ class DBSCANSupport(_SeamountSupport):
             return -100000000
         score = average / self.seamount_points  # type: ignore
         score -= abs(num_true - self.seamount_points) / num_true  # type: ignore
+        #score -= abs(len(np.unique(labels)) - self.num_seamounts) / len(np.unique((labels)))  # type: ignore
         # penalize for too many or too few correct clusters to get more positives
         return score
 
@@ -210,6 +211,29 @@ class DBSCANSupport(_SeamountSupport):
         db.fit(test_data)
         classifier = self.__autoFilter if not self.test else DBSCANSupport.__outlierFilter
         return self.deviation(test_data, db.labels_, classifier)  # type: ignore
+
+    def getSeamountPoints(self):
+        """
+        Returns the points that got catagorized as seamounts
+        """
+        if self.end_params is None:
+            raise AttributeError("Testing has not been done")
+        if self.test:
+            return (-1,)
+        db = DBSCAN(eps=self.end_params[0], min_samples=self.end_params[1]).fit(self.unlabled_data)  # type: ignore
+        label_count = np.int64((len(db.labels_) - (1 if -1 in db.labels_ else 0)))  # number of clusters
+        precent_true = self.seamount_points / self.training_data.shape[0]  # type: ignore
+        # precent of data that is actualy seamounts
+        value, frequency = np.unique(db.labels_, return_counts=True)
+        value_counts = np.vstack((value, frequency)).T  # create frequency table of labels
+        cluster_max_lim = precent_true + DBSCANSupport.MARGIN  # max relitive cluster size to be considered a seamount
+        vals = []
+        for val, count in value_counts:
+            # Identifies clusters that occur to frequently to be consitered seamounts
+            if count / label_count > cluster_max_lim:
+                vals.append(val)
+        return tuple(vals)
+
 
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")
