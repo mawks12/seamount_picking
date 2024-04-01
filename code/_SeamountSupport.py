@@ -45,7 +45,7 @@ class _SeamountSupport:
         self.validation_path = validation_data
         self.train_zone = train_zone
         self.seamount_points = None
-        seamounts = pd.read_excel(validation_data, sheet_name=sheet)
+        seamounts = self.filterData(validation_data, self.train_zone)
         self.num_seamounts = seamounts.shape[0]
         self.distance = _SeamountSupport._pythagorean  # distance function
         self.datascaler = StandardScaler()
@@ -108,7 +108,6 @@ class _SeamountSupport:
         assert isinstance(self.unlabled_data, np.ndarray)
         self.label_hash = dict(zip(map(  # create hashtable for faster checking
             tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
-
 
     @staticmethod
     def _radiusMatch(test_points, tree, points, query) -> int:

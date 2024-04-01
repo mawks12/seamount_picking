@@ -31,3 +31,18 @@ Used Outliers: False
 Score: -8.931114692182383
 Params: (0.05578947368421053, 13)
 Used Outliers: False
+Score: -8.931114692182383
+Params: (0.05578947368421053, 13)
+Used Outliers: False
+Score: -1.0156982193064668
+Params: (0.02526315789473684, 8)
+Used Outliers: False
+Score: -1.0164286202066715
+Params: (0.02526315789473684, 8)
+Used Outliers: False
+Score: -0.21281252834295733
+Params: (0.1931578947368421, 2)
+Used Outliers: False
+Score: -0.8775510204081632
+Params: (0.01, 3)
+Used Outliers: False
