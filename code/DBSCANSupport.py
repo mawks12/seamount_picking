@@ -64,7 +64,7 @@ class DBSCANSupport(_SeamountSupport):
         """
         if self.training_data is None or self.unlabled_data is None:
             raise AttributeError("Training data has not been added to the class yet")
-        best_score = -100000000
+        best_score = 100000000
         params = list(product(eps_vals, samp_vals))  # get all possible parameter combinations
         classifier = self.__autoFilter
         for epsi, samp in params:  # itterate through all possible parameter combinations
@@ -93,7 +93,7 @@ class DBSCANSupport(_SeamountSupport):
             score = self.deviation(self.unlabled_data, labels, classifier)
             if verbose:
                 print(f"Score for {epsi} and {samp} is {score} with {len(labels_set)} clusters")
-            if score > best_score and score != 0:
+            if score < best_score and score != 0:
                 best_score = score
                 self.end_params = (epsi, samp)
                 best_labels = labels  # add labels to data
@@ -128,18 +128,14 @@ class DBSCANSupport(_SeamountSupport):
             validation data, else will use the data provided
         """
         classified = classifier(data, labels)
-        average = 0
-        num_true = 0
+        score = 0
         #num_clusters = len(np.unique(classified[:,2]))  TODO: remove if not needed
         if len(classified) == 0:
             raise ValueError("Classifier returned no valid clusters")
         for i in classified:  # Itterate through model labels and check if they are in points
-            is_mount = self._trueSeamount(i[0:2])
-            average += is_mount
-            num_true += 1 if is_mount == 1 else 0
-        if num_true == 0:
-            return -100000000
-        score = (num_true - (len(classified) - num_true)) / len(classified)
+            score += self._trueSeamount(i[0:2]) * -1
+        score = score / len(classified)
+        
         return score
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name

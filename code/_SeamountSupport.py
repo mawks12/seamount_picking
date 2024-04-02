@@ -64,7 +64,7 @@ class _SeamountSupport:
         Returns
         -------
         int
-            1 if true seamount else -1
+            1 if true seamount, 0 if boundary, -1 if not a seamount
         """
         if self.unlabled_data is None or self.label_hash is None:
             raise AttributeError("No training data has been added")
@@ -127,7 +127,7 @@ class _SeamountSupport:
         Returns
         -------
         int
-            1 if true seamount else 0
+            1 if true seamount, 0 if boundary, -1 if not a seamount
         """
         _, i = tree.query([test_points[0], test_points[1]])
         nearest = points[i]  # get nearest point
