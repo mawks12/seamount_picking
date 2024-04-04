@@ -51,7 +51,7 @@ class _SeamountSupport:
         self.unlabled_data = None
         self.label_hash = {}
         self.training_data = np.array([])
-        self.p_neighbors = scipy.spatial.KDTree([0])
+        self.p_neighbors = scipy.spatial.KDTree([[0]])
         self.seamount_dict = {}
         self.__points = np.array([])
 
@@ -111,6 +111,26 @@ class _SeamountSupport:
         self.label_hash = dict(zip(map(  # create hashtable for faster checking
             tuple, self.unlabled_data[:, :2]), training_data[:, 3]))
 
+    def getNear(self, point: tuple[float, float]):
+        """
+        Gets the radius of the nearest seamount
+        Parameters
+        ----------
+        point : tuple
+            Point to get the radius for
+        Returns
+        -------
+        radius : int
+            Radius of the nearest seamount
+        nearest : tuple
+            Nearest seamount
+        """
+        _, i = self.p_neighbors.query([point])
+        nearest = self.__points[i][0][:2]
+        radius = self.seamount_dict.get(tuple(nearest), -1)
+        assert radius != -1
+        return tuple(nearest), radius
+
     @staticmethod
     def _radiusMatch(test_points, tree, points, query) -> int:
         """
@@ -143,6 +163,7 @@ class _SeamountSupport:
         if dist < radius:
             return 0
         return -1
+    
 
     def filterData(self, path, data_range: tuple, csv=False) -> pd.DataFrame:
         """
@@ -185,9 +206,19 @@ class _SeamountSupport:
             raise AttributeError("Training data has not been added to the class yet")
         return pd.DataFrame(self.training_data,  # type: ignore
                             columns=["Latitude", "Longitude", "Radius", "TrueSeamount"])
-    
-    # TODO: Add docs
-    def getPindex(self, ind) -> tuple[float, float]:
+
+    def getPindex(self, ind: int) -> tuple[float, float]:
+        """
+        Get the index of a point in the seamount.
+
+        Parameters
+        ---------
+        ind: int
+            The index of the point.
+        Returns
+        -------
+        A tuple containing the x and y coordinates of the point.
+        """
         return tuple(self.__points[ind])  # type: ignore
 
     @abstractmethod
@@ -274,7 +305,7 @@ class _SeamountSupport:
         return data.to_numpy()
 
     @staticmethod
-    def seamountNorm(radius, point: tuple[float, float]) -> float:
+    def seamountNorm(radius: int, dist: float) -> float:
         """
         Distributiuon function for p_dist calculation
         Parameters
@@ -288,10 +319,14 @@ class _SeamountSupport:
         float
             Probability that the point is part of the seamount
         """
-        return math.exp(((2.447 * point[0]) ** 2 + (2.447 * point[1]) ** 2) / (2 * (radius ** 2)))
+        assert dist is not None
+        try:
+            return math.exp((2.447 * dist) ** 2 / (2 * (radius ** 2)))
+        except OverflowError:
+            return 0
 
     @staticmethod
-    def pDist(radius, center: tuple[float, float], point: tuple[float, float]) -> float:
+    def pDist(radius: int, center: tuple[float, float], point: tuple[float, float]) -> float:
         """
         Calculates the probability that a point is part of a seamount given
         the center of the seamount and the radius. Uses an adapted normal distribution
@@ -310,5 +345,7 @@ class _SeamountSupport:
         float
             Probability that the point is part of the seamount
         """
-        adjusted_point = (point[0] - center[0], point[1] - center[1])
-        return _SeamountSupport.seamountNorm(radius, adjusted_point)
+        if radius == -1:
+            raise ValueError("Point is not a seamount")
+        dist = _SeamountSupport._haversine(center[0], center[1], point[0], point[1])
+        return _SeamountSupport.seamountNorm(radius, dist)

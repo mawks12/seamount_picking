@@ -132,14 +132,18 @@ class DBSCANSupport(_SeamountSupport):
         assert self.seamount_points is not None
         if len(classified) == 0:
             raise ValueError("Classifier returned no valid clusters")
-        for i in vals:  # Iterate through model labels and check if they are in points
-            mount = self._trueSeamount(i[0:2])
-            vals[i[0]] = mount
-            vals[i[1]] = 1
-            ind = self.p_neighbors.query(classified[i])  # type: ignore
-            nearest = self.getPindex(ind)
-            vals[i[2]] = _SeamountSupport.pDist(self.seamount_dict.get(tuple(nearest)), nearest, classified[i])
-        return metrics.log_loss(vals[:, 0], vals[:, 1:])  # TODO: WTF am i doing here
+        i = 0
+        for val in classified:  # Iterate through model labels and check if they are in points
+            mount = self._trueSeamount(val[0:2])
+            if mount == 0:
+                mount = 1
+            vals[i][0] = mount
+            vals[i][1] = 1
+            #nearest, radius = self.getNear(val[:2])
+            #vals[i][2] = _SeamountSupport.pDist(radius, nearest, classified[i])
+            i += 1
+        pred = np.ones(len(classified))
+        return metrics.log_loss(vals[:, 0], classified[:, 2], labels=[-1, 1])  # TODO: WTF am i doing here
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name
         """
@@ -157,7 +161,9 @@ class DBSCANSupport(_SeamountSupport):
         """
         nonval = stats.mode(labels)[0]
         classified = np.insert(data, 2, labels, axis=1)
-        classified = classified[classified[:, 2] != nonval]
+        classified[classified[:, 2] == nonval][:, 2] = -2
+        classified[classified[:, 2] != nonval][:, 2] = 1
+        classified[classified[:, 2] == -2][:, 2] = -1
         return classified
 
     @staticmethod
@@ -176,7 +182,10 @@ class DBSCANSupport(_SeamountSupport):
             Filtered data
         """
         classified = np.insert(data, 2, labels, axis=1)
-        return classified[classified[:, 2] == -1]
+        classified[classified[:, 2] != -1][:, 2] = -2
+        classified[classified[:, 2] == -1][:, 2] = 1
+        classified[classified[:, 2] == -2][:, 2] = -1
+        return classified
 
     def scoreTestData(self, test_data) -> float:
         """
