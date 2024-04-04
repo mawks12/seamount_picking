@@ -3,12 +3,11 @@ Basic support class for the seamount detection code
 """
 
 from abc import abstractmethod
-from math import atan2
+import math
 import scipy.spatial
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-
 
 class _SeamountSupport:
     """
@@ -50,8 +49,11 @@ class _SeamountSupport:
         self.distance = _SeamountSupport._pythagorean  # distance function
         self.datascaler = StandardScaler()
         self.unlabled_data = None
-        self.label_hash = None
-        self.training_data = None
+        self.label_hash = {}
+        self.training_data = np.array([])
+        self.p_neighbors = scipy.spatial.KDTree([0])
+        self.seamount_dict = {}
+        self.__points = np.array([])
 
     def _trueSeamount(self, test_points) -> int:
         """
@@ -91,14 +93,14 @@ class _SeamountSupport:
         self.training_data = training_data
         self.datascaler.fit(training_data)
         seamounts = self.filterData(self.validation_path, self.train_zone, csv=False)
-        __points = seamounts.to_numpy()  # get points
-        seamount_dict = dict(zip(zip(__points[:, 0], __points[:, 1]), \
-                                      __points[:, 2]))
+        self.__points = seamounts.to_numpy()  # get points
+        self.seamount_dict = dict(zip(zip(self.__points[:, 0], self.__points[:, 1]), \
+                                      self.__points[:, 2]))
         # dictionary of true seamounts and radii for faster distance checking
-        p_neighbors = scipy.spatial.KDTree(__points[:, :2])
+        self.p_neighbors = scipy.spatial.KDTree(self.__points[:, :2])
         for i in range(self.training_data.shape[0]):
             self.training_data[i][3] = _SeamountSupport._radiusMatch(
-                training_data[i], p_neighbors, __points, seamount_dict)
+                training_data[i], self.p_neighbors, self.__points, self.seamount_dict)
         self.seamount_points = self.training_data[self.training_data[:, 3] == 1].shape[0]
         self.training_data = self.datascaler.transform(training_data)
         self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSHMIN]  # type: ignore
@@ -183,6 +185,10 @@ class _SeamountSupport:
             raise AttributeError("Training data has not been added to the class yet")
         return pd.DataFrame(self.training_data,  # type: ignore
                             columns=["Latitude", "Longitude", "Radius", "TrueSeamount"])
+    
+    # TODO: Add docs
+    def getPindex(self, ind) -> tuple[float, float]:
+        return tuple(self.__points[ind])  # type: ignore
 
     @abstractmethod
     def scoreTestData(self, test_data) -> float:
@@ -221,7 +227,7 @@ class _SeamountSupport:
         dlat = lat2 - lat1
         dlon = lon2 - lon1
         a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
-        c = 2 * atan2(np.sqrt(a), np.sqrt(1 - a))
+        c = 2 * math.atan2(np.sqrt(a), np.sqrt(1 - a))
         return _SeamountSupport.RADIUS * c
 
     @staticmethod
@@ -266,3 +272,43 @@ class _SeamountSupport:
         data = data[["Latitude", "Longitude", zval]]
         data["TrueSeamount"] = np.zeros(data.shape[0])
         return data.to_numpy()
+
+    @staticmethod
+    def seamountNorm(radius, point: tuple[float, float]) -> float:
+        """
+        Distributiuon function for p_dist calculation
+        Parameters
+        ----------
+        radius : float
+            Radius of the seamount
+        point : tuple
+            Point to calculate the probability for
+        Returns
+        -------
+        float
+            Probability that the point is part of the seamount
+        """
+        return math.exp(((2.447 * point[0]) ** 2 + (2.447 * point[1]) ** 2) / (2 * (radius ** 2)))
+
+    @staticmethod
+    def pDist(radius, center: tuple[float, float], point: tuple[float, float]) -> float:
+        """
+        Calculates the probability that a point is part of a seamount given
+        the center of the seamount and the radius. Uses an adapted normal distribution
+        such that the probability is 1 at the center of the seamount and 0.05 at the edge
+        for any given radius
+        Parameters
+        ----------
+        radius : float
+            Radius of the seamount
+        center : tuple
+            Center of the seamount in the form (lat, lon)
+        point : tuple
+            Point to calculate the probability for
+        Returns
+        -------
+        float
+            Probability that the point is part of the seamount
+        """
+        adjusted_point = (point[0] - center[0], point[1] - center[1])
+        return _SeamountSupport.seamountNorm(radius, adjusted_point)

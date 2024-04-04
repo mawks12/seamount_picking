@@ -7,6 +7,7 @@ from sklearn.cluster import DBSCAN
 import numpy as np
 from _SeamountSupport import _SeamountSupport
 from scipy import stats
+from sklearn import metrics
 
 class DBSCANSupport(_SeamountSupport):
     """
@@ -110,8 +111,7 @@ class DBSCANSupport(_SeamountSupport):
         """
         Calculates the deviation of output seamount
         classifications from the true seamounts using the
-        fomula (true_positives - false_positives) / total_points
-        - abs(num_clusters - num_seamounts) / num_clusters
+        formula (false postivies + false negetives) / total true positives
         and the filter variable to determine how to assign clusters
         Parameters
         ----------
@@ -128,15 +128,18 @@ class DBSCANSupport(_SeamountSupport):
             validation data, else will use the data provided
         """
         classified = classifier(data, labels)
-        score = 0
-        #num_clusters = len(np.unique(classified[:,2]))  TODO: remove if not needed
+        vals = np.ndarray(shape=(len(classified), 3))
+        assert self.seamount_points is not None
         if len(classified) == 0:
             raise ValueError("Classifier returned no valid clusters")
-        for i in classified:  # Itterate through model labels and check if they are in points
-            score += self._trueSeamount(i[0:2]) * -1
-        score = score / len(classified)
-        
-        return score
+        for i in vals:  # Iterate through model labels and check if they are in points
+            mount = self._trueSeamount(i[0:2])
+            vals[i[0]] = mount
+            vals[i[1]] = 1
+            ind = self.p_neighbors.query(classified[i])  # type: ignore
+            nearest = self.getPindex(ind)
+            vals[i[2]] = _SeamountSupport.pDist(self.seamount_dict.get(tuple(nearest)), nearest, classified[i])
+        return metrics.log_loss(vals[:, 0], vals[:, 1:])  # TODO: WTF am i doing here
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name
         """
