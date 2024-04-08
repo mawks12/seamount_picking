@@ -99,11 +99,12 @@ class _SeamountSupport:
         # dictionary of true seamounts and radii for faster distance checking
         self.p_neighbors = scipy.spatial.KDTree(self.__points[:, :2])
         for i in range(self.training_data.shape[0]):
-            self.training_data[i][3] = _SeamountSupport._radiusMatch(
+            self.training_data[i][3] = self._radiusMatch(
                 training_data[i], self.p_neighbors, self.__points, self.seamount_dict)
         self.seamount_points = self.training_data[self.training_data[:, 3] == 1].shape[0]
         self.training_data = self.datascaler.transform(training_data)
-        self.training_data = self.training_data[self.training_data[:, 2] > _SeamountSupport.FILTERTHRSHMIN]  # type: ignore
+        self.training_data = self.training_data[  # type: ignore
+            self.training_data[:, 2] > _SeamountSupport.FILTERTHRSHMIN]  # type: ignore
         self.training_data = self.training_data[self.training_data[:, 2] < _SeamountSupport.FILTERTHRDHMAX]
         #  filter out points that have too low a gravity value
         self.unlabled_data = self.training_data[:, :3]  # type: ignore
@@ -131,8 +132,7 @@ class _SeamountSupport:
         assert radius != -1
         return tuple(nearest), radius
 
-    @staticmethod
-    def _radiusMatch(test_points, tree, points, query) -> int:
+    def _radiusMatch(self, test_points, tree, points, query) -> int:
         """
         Checks if a point is a true seamount by comparing
         it to the its hashed value
@@ -158,12 +158,9 @@ class _SeamountSupport:
             # if not raise an error
             raise KeyError(f"Error: {nearest[0]}, {nearest[1]} not found in seamounts")
         dist = _SeamountSupport._haversine(nearest[0], nearest[1], test_points[0], test_points[1])
-        if dist < (radius - _SeamountSupport.BOUNDARY):
+        if dist < (radius):
             return 1
-        if dist < radius:
-            return 0
         return -1
-    
 
     def filterData(self, path, data_range: tuple, csv=False) -> pd.DataFrame:
         """

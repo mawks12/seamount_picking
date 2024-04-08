@@ -140,8 +140,7 @@ class DBSCANSupport(_SeamountSupport):
             #nearest, radius = self.getNear(val[:2])
             #vals[i][2] = _SeamountSupport.pDist(radius, nearest, classified[i])
             i += 1
-        # pred = np.ones(len(classified))
-        return metrics.log_loss(vals[:, 0], classified[:, 2], labels=[-1, 1])  # TODO: WTF am i doing here
+        return metrics.log_loss(vals[:, 0], classified[:, 2], labels=[-1, 1])
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name
         """
