@@ -49,3 +49,12 @@ Used Outliers: False
 Score: 2.144440395475757
 Params: (0.32052631578947366, 13)
 Used Outliers: True
+Score: 5.048459595218364
+Params: (0.2894736842105263, 11)
+Used Outliers: True
+Score: 3.9623672636388365
+Params: (0.16526315789473683, 2)
+Used Outliers: False
+Score: 5.048459595218364
+Params: (0.2894736842105263, 11)
+Used Outliers: True
