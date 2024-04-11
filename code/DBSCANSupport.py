@@ -184,7 +184,7 @@ class DBSCANSupport(_SeamountSupport):
         classified[classified[:, 2] == -2][:, 2] = -1
         return classified
 
-    def testData(self, test_data):
+    def testData(self, test_data) -> np.ndarray:
         """
         Tests model on new data
         Parameters
@@ -202,7 +202,6 @@ class DBSCANSupport(_SeamountSupport):
         scalar = StandardScaler()
         test_data = scalar.fit_transform(test_data)
         db.fit(test_data)
-        #classifier = self.__autoFilter if not self.test else DBSCANSupport.__outlierFilter
         return np.insert(scalar.inverse_transform(test_data), 2, db.labels_, axis=1)  # type: ignore
 
     def getSeamountPoints(self):
