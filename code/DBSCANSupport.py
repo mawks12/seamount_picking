@@ -8,13 +8,11 @@ import numpy as np
 from _SeamountSupport import _SeamountSupport
 from scipy import stats
 from sklearn import metrics
+from sklearn.preprocessing import StandardScaler
 
 class DBSCANSupport(_SeamountSupport):
     """
     Class containing tester functions for DBSCAN algorithm
-    Converts lat long to UTM coordinates for euclidean distance 
-    algorithms, and but currently only works with one UTM zone
-    at a time # TODO: Update to work with more
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
@@ -142,7 +140,7 @@ class DBSCANSupport(_SeamountSupport):
             #nearest, radius = self.getNear(val[:2])
             #vals[i][2] = _SeamountSupport.pDist(radius, nearest, classified[i])
             i += 1
-        pred = np.ones(len(classified))
+        # pred = np.ones(len(classified))
         return metrics.log_loss(vals[:, 0], classified[:, 2], labels=[-1, 1])  # TODO: WTF am i doing here
 
     def __autoFilter(self, data, labels): # pylint: disable=invalid-name
@@ -187,24 +185,26 @@ class DBSCANSupport(_SeamountSupport):
         classified[classified[:, 2] == -2][:, 2] = -1
         return classified
 
-    def scoreTestData(self, test_data) -> float:
+    def testData(self, test_data):
         """
-        Scores the test data
+        Tests model on new data
         Parameters
         ----------
         test_data : array-like
             Data to score
-        Returns
+        Returns  TODO: Update docs
         -------
         score : float
             Score of the test data
         """
         if self.end_params is None:
-            raise AttributeError("Testing has not been done")
+            raise AttributeError("Training has not been done")
         db = DBSCAN(eps=self.end_params[0], min_samples=self.end_params[1])
+        scalar = StandardScaler()
+        test_data = scalar.fit_transform(test_data)
         db.fit(test_data)
-        classifier = self.__autoFilter if not self.test else DBSCANSupport.__outlierFilter
-        return self.deviation(test_data, db.labels_, classifier)  # type: ignore
+        #classifier = self.__autoFilter if not self.test else DBSCANSupport.__outlierFilter
+        return np.insert(scalar.inverse_transform(test_data), 2, db.labels_, axis=1)  # type: ignore
 
     def getSeamountPoints(self):
         """
@@ -228,6 +228,8 @@ class DBSCANSupport(_SeamountSupport):
                 vals.append(val)
         return tuple(vals)
 
+    def makePredict(self, data: np.ndarray):
+        ...
 
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")
