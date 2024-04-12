@@ -18,7 +18,7 @@ class _SeamountSupport:
     """
     MARGIN = 0.002  # percentage margin allowed to be considered a seamount cluster
     RADIUS = 6371  # radius of the earth in km
-    FILTERTHRSHMIN = -1000.5  # threshold for filtering out points
+    FILTERTHRSHMIN = -1000.5  # threshold for filtering out points NOTE: Depreciated
     FILTERTHRDHMAX = 2008.2
     BOUNDARY = 2  # Distance from boundary to be considered a boundary point
     # Used in scoring so that boundary points are not penalized or rewarded
@@ -217,7 +217,7 @@ class _SeamountSupport:
         A tuple containing the x and y coordinates of the point.
         """
         return tuple(self.__points[ind])  # type: ignore
-    
+
     def getValidationSeamounts(self) -> np.ndarray:
         """
         Get the seamounts in the validation data

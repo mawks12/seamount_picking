@@ -227,7 +227,7 @@ class DBSCANSupport(_SeamountSupport):
         return tuple(vals)
 
     def makePredict(self, data: np.ndarray):
-        ...
+        ...  # TODO: Implement makePredict
 
 if __name__ == "__main__":
     raise RuntimeError("DBSCANSupport is a library and should not be run as main")
