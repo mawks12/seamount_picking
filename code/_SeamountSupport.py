@@ -293,7 +293,7 @@ class _SeamountSupport:
         return np.sqrt(x ** 2 + y ** 2) / 1000
 
     @staticmethod
-    def formatData(data: pd.DataFrame, zval: str) -> np.ndarray:
+    def formatData(data: pd.DataFrame | np.ndarray, zval: str) -> np.ndarray:
         """
         Formats the data to be used in an algorithm
         by adding a column of zeros to the end of the data
@@ -309,6 +309,8 @@ class _SeamountSupport:
         np.ndarray
             Formatted data
         """
+        if isinstance(data, np.ndarray):
+            data = pd.DataFrame(data, columns=['Latitude', 'Longitude', zval])
         data = data[["Latitude", "Longitude", zval]]
         data.loc[:, "TrueSeamount"] = np.zeros(data.shape[0])
         return data.to_numpy()

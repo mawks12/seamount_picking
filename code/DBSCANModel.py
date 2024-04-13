@@ -9,6 +9,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.metrics import log_loss
 import pandas as pd
 from DBSCANSupport import DBSCANSupport
+from sklearn.preprocessing import StandardScaler
 
 class DBSCANModel(DBSCANSupport):
     """
@@ -29,14 +30,16 @@ class DBSCANModel(DBSCANSupport):
             parameters for the DBSCAN algorithm, defaults to best found params
         """
         self.model = DBSCAN(eps=params[0], min_samples=params[1])
+        self.datascaler = StandardScaler()
         self.data = self.datascaler.fit_transform(data)
-        self.model.fit(data)
-        self.data = np.ndarray(self.datascaler.inverse_transform(data))  # type: ignore
-        trainzone = (self.data[:, 0].min(), self.data[:, 0].max(),
+        self.model.fit(self.data)
+        self.data = self.datascaler.inverse_transform(self.data)  # type: ignore
+        trainzone = (self.data[:, 0].min(), self.data[:, 0].max(),  # type: ignore
                      self.data[:, 1].min(), self.data[:, 1].max()) # type: ignore
         super().__init__(Path('data') / 'sample_mask.txt.xlsx', train_zone=trainzone)
         self.params = params
-        self.addTrainingData(self.data)
+        self.data = self.formatData(self.data, "Intensity")  # type: ignore
+        self.addTrainingData(self.data)  # type: ignore
         self.labels = self.model.labels_
 
     def getClusters(self) -> pd.DataFrame:
@@ -48,7 +51,7 @@ class DBSCANModel(DBSCANSupport):
         clusters: pd.DataFrame
             dataframe of clusters
         """
-        clusters = pd.DataFrame(self.data, columns=["Latitude", "Longitude", "Intensity"])  # type: ignore
+        clusters = pd.DataFrame(self.data, columns=["Latitude", "Longitude", "Intensity", "TrueVal"])  # type: ignore
         clusters["Cluster"] = self.labels
         return clusters
 

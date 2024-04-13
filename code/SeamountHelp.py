@@ -9,6 +9,7 @@ import numpy as np
 import plotly.express as px
 from plotly.graph_objs._figure import Figure
 from DBSCANModel import DBSCANModel
+import pandas as pd
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -47,13 +48,13 @@ def filterData(data: np.ndarray, bounds: tuple[float, float, float, float]) -> n
     filtered: np.ndarray
         filtered data
     """
-    data = data[data[:, 1] >= bounds[2]]
-    data = data[data[:, 1] <= bounds[3]]
     data = data[data[:, 0] >= bounds[0]]
     data = data[data[:, 0] <= bounds[1]]
+    data = data[data[:, 1] >= bounds[2]]
+    data = data[data[:, 1] <= bounds[3]]
     return data
 
-def plotData(data, colarval="Intensity", op=1.0) -> Figure:
+def plotData(data: pd.DataFrame, colarval="Intensity", op=1.0) -> Figure:
     """
     generates a plot of Lat Lon Intensity data
     Parameters
@@ -95,8 +96,8 @@ def testNewZone(bounds, data, params=(0.32052631578947366, 13)):
     data = filterData(data, bounds)
     model = DBSCANModel(data, params)
     labels = model.getClusters().to_numpy()
-    score = model.scoreTestData(data)
-    return labels, score
+    #score = model.scoreTestData(data)
+    return labels
 
 def plotTestZone(bounds, data, params=(0.32052631578947366, 13)):
     """
@@ -116,5 +117,6 @@ def plotTestZone(bounds, data, params=(0.32052631578947366, 13)):
     data = filterData(data, bounds)
     model = DBSCANModel(data, params)
     labels = model.getClusters()
-    fig = plotData(labels, "Cluster")
+    labels = labels[labels["Cluster"] != labels["Cluster"].mode()[0]]
+    fig = plotData(labels, "TrueVal")
     return fig
