@@ -9,6 +9,7 @@ import numpy as np
 import plotly.express as px
 from plotly.graph_objs._figure import Figure
 from DBSCANModel import DBSCANModel
+from sklearn.cluster import HDBSCAN
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -118,3 +119,28 @@ def plotTestZone(bounds, data, params=(0.32052631578947366, 13)):
     labels = model.getClusters()
     fig = plotData(labels, "Cluster")
     return fig
+
+def divClusters(data):
+    """
+    Divides a set of data into clusters
+    
+    Parameters
+    ----------
+    data: np.ndarray
+        data to be divided
+    Returns
+    ----------
+    d_out: np.ndarray
+        array of data with cluster labels
+    centers: np.ndarray
+        array of cluster centroids
+    """
+    clusterer = HDBSCAN(min_cluster_size=2, store_centers='centroid')
+    clusterer.fit(data[:, :2])
+    labels = clusterer.labels_
+    d_out = np.insert(data, 2, labels, axis=1)
+    centers = clusterer.centroids_
+    outliers = d_out[d_out[:, 2] == -1]
+    centers = np.append(centers, outliers[:, :2], axis=0)
+    return d_out, centers[:, ::-1]
+    
