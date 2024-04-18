@@ -10,4 +10,4 @@ code/__pycache__/DBSCANSupport.cpython-311.pyc
 code/__pycache__/LocalPath.cpython-311.pyc
 data/curv_32.highpass.xyz
 code/data/curv_32.highpass.xyz
-all_stms/*
+all_stms/
