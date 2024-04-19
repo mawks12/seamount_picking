@@ -9,7 +9,7 @@ import numpy as np
 import plotly.express as px
 from plotly.graph_objs._figure import Figure
 from DBSCANModel import DBSCANModel
-from sklearn.cluster import HDBSCAN
+from sklearn.cluster import HDBSCAN # type: ignore
 import pandas as pd
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
