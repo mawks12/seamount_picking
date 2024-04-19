@@ -5,6 +5,7 @@ File handling optimization and other basic task
 specific functions
 """
 
+from pathlib import Path
 import numpy as np
 import plotly.express as px
 from plotly.graph_objs._figure import Figure
@@ -145,4 +146,21 @@ def divClusters(data):
     outliers = d_out[d_out[:, 2] == -1]
     centers = np.append(centers, outliers[:, :2], axis=0)
     return d_out, centers[:, ::-1]
-    
+
+def exportCentroids(centers, filename=Path('data') / 'centered_all.xy', mountname="Seamount"):
+    """
+    Exports centroids to a file with a name, lon, lat format
+
+    Parameters
+    ----------
+    centers: np.ndarray
+        array of centroids of lat lon - script will reverse the order
+    filename: Path Object
+        name of file to be exported
+    mountname: str
+        name of seamounts
+    """
+    centers = centers[:, ::-1]  # Reverse order
+    with open(filename, 'w', encoding='utf-8') as f:
+        for ind, val in enumerate(centers):
+            f.write(f"{mountname}-{ind} {val[0]} {val[1]}\n")
