@@ -2,7 +2,7 @@
  
 rm best_SIO.txt
  
-for smt in `cat KW_SIO_lists/SIO_all.txt`
+for smt in `cat KW_SIO_lists/SIO_all.txt` # seems to be a list of all seamounts, not sure what it is cross referenced with
 do
   echo $smt.txt
 #

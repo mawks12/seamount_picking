@@ -11,7 +11,7 @@
 #pre="good"
 #pre="shallow"
 #pre="short"
-pre="tall"
+pre="tall" # seems to be some kind of parameter that gets changed - find out what it is and when to change it
 echo $pre
 rm charted.xyhrdnc
 rm uncharted.xyhrdnc

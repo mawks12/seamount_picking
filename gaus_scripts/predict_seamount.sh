@@ -11,7 +11,7 @@ height=$2
 #
 # 1 - get the seamount location and cut the grids
 #
-grep $1 centered_all.xy | head -1 > center.xy
+grep $1 centered_all.xy | head -1 > center.xy # centered_all.xy is the cross reference for seamounts, containing a name and a location in lon/lat
 lonc=$( awk '{print $2}' < center.xy )
 latc=$( awk '{print $3}' < center.xy )
 #
