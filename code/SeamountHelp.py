@@ -24,16 +24,20 @@ def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray
         text wrapper object of file being read
     bounds: tuple
         area being filtered for of the form (minlat, maxlat, minlon, maxlon)
+    Returns
+    -------
+    np.ndarray
+        2d array where each sub array is of the form [Lon, Lat, Zval]
     """
     out = []
     for line in io:
         line = line.split()
-        if bounds[2] <= float(line[0]) and bounds[3] >= float(line[0]):  # Check Lat bounds
-            if bounds[0] <= float(line[1]) and bounds[1] >= float(line[1]):  # Check Lon bounds
+        if bounds[2] <= float(line[0]) and bounds[3] >= float(line[0]):  # Check Lon bounds
+            if bounds[0] <= float(line[1]) and bounds[1] >= float(line[1]):  # Check Lat bounds
                 out.append([float(i) for i in line])
         else:
             continue
-    return np.array(out)
+    return np.array(out)[:, [1, 0, 2]]
 
 def filterData(data: np.ndarray, bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -89,15 +93,13 @@ def testNewZone(bounds, data, params=(0.32052631578947366, 13)):
         parameters for the DBSCAN algorithm, defaults to best found params
         found in the DBSCAN training notebook
     Returns
-    ----------
-    labels: np.ndarray
+    -------
+    labels: pd.DataFrame
         set of labeled data points
-    score: float
-        score of the zone
     """
     data = filterData(data, bounds)
     model = DBSCANModel(data, params)
-    labels = model.getClusters().to_numpy()
+    labels = model.getClusters()
     #score = model.scoreTestData(data)
     return labels
 
@@ -123,7 +125,7 @@ def plotTestZone(bounds, data, params=(0.32052631578947366, 13)):
     fig = plotData(labels, "TrueVal")
     return fig
 
-def divClusters(data):
+def divClusters(data: np.ndarray):
     """
     Divides a set of data into clusters
     
@@ -163,4 +165,4 @@ def exportCentroids(centers, filename=Path('data') / 'centered_all.xy', mountnam
     centers = centers[:, ::-1]  # Reverse order
     with open(filename, 'w', encoding='utf-8') as f:
         for ind, val in enumerate(centers):
-            f.write(f"{mountname}-{ind} {val[0]} {val[1]}\n")
+            f.write(f"{mountname}-{ind} {val[1]} {val[0]}\n")
