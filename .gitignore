@@ -11,3 +11,5 @@ code/__pycache__/LocalPath.cpython-311.pyc
 data/curv_32.highpass.xyz
 code/data/curv_32.highpass.xyz
 all_stms/
+code/data/VGG_SWOT.kmz
+code/data/VGG_V32_SWOTlike.kmz
