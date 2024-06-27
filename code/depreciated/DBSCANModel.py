@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import log_loss
 import pandas as pd
-from DBSCANSupport import DBSCANSupport
+from .DBSCANSupport import DBSCANSupport
 from sklearn.preprocessing import StandardScaler
 
 class DBSCANModel(DBSCANSupport):

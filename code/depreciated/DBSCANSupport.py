@@ -5,7 +5,7 @@ Supporting code for DBSCAN algorithm
 from itertools import product
 from sklearn.cluster import DBSCAN
 import numpy as np
-from _SeamountSupport import _SeamountSupport
+from ._SeamountSupport import _SeamountSupport
 from scipy import stats
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
