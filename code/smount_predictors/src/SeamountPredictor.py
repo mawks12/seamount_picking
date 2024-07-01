@@ -1,5 +1,5 @@
 """
-Predictor class for using gausian convolution and gradient
+Predictor module for using gausian convolution and gradient
 peaks to identify seamounts
 """
 
@@ -23,7 +23,7 @@ class SeamountPredictor(BaseEstimator, ClassifierMixin):
     with sklearn pipelines.
     """
 
-    def __init__(self, classifier_threshold) -> None:
+    def __init__(self, classifier_threshold: float = 100) -> None:
         """
         Initializes a SeamountPredictor object.
 

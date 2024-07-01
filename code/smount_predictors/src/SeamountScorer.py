@@ -1,5 +1,5 @@
 """
-Custom class for seamount scoring.
+Custom module for seamount scoring.
 """
 
 from typing import Callable

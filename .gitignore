@@ -222,3 +222,6 @@ code/data/VGG_V32_SWOTlike.kmz
 *.grd
 *.xyz
 gmt.history
+*.kml
+*.kmz
+SWOT

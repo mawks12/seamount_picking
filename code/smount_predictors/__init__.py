@@ -5,10 +5,9 @@ with sklearn pipelines, as well as some additional
 supporting functions for reading and working with
 data.
 """
-from .src import DBSCANSupport
 from .src import SeamountHelp
-from .src import SeamountPredictor
-from .src import SeamountScorer
-from .src import SeamountCVSplitter
+from .src.SeamountPredictor import SeamountPredictor
+from .src.SeamountScorer import SeamountScorer
+from .src.SeamountCVSplitter import SeamountCVSplitter
 
-__all__ = ['SeamountPredictor', 'SeamountCVSplitter', 'SeamountScorer', 'DBSCANSupport', 'SeamountHelp']
+__all__ = ['SeamountPredictor', 'SeamountCVSplitter', 'SeamountScorer', 'SeamountHelp']

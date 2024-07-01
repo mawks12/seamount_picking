@@ -1,5 +1,5 @@
 """
-Splitting class to split the seamounts into training and testing datasets
+Splitting module to split the seamounts into training and testing datasets
 """
 
 from math import sqrt, log2
