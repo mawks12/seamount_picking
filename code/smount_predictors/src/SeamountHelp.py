@@ -5,6 +5,7 @@ File handling optimization and other basic task
 specific functions
 """
 
+<<<<<<< HEAD
 from pathlib import Path
 import numpy as np
 import plotly.express as px
@@ -12,6 +13,11 @@ from plotly.graph_objs._figure import Figure
 from depreciated.DBSCANModel import DBSCANModel
 # from sklearn.cluster import HDBSCAN
 import pandas as pd
+=======
+import numpy as np
+import plotly.express as px
+from plotly.graph_objs._figure import Figure
+>>>>>>> 0524657 (Added seamount ml classes to interface with sklearn libraries)
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -24,14 +30,18 @@ def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray
         text wrapper object of file being read
     bounds: tuple
         area being filtered for of the form (minlat, maxlat, minlon, maxlon)
+<<<<<<< HEAD
     Returns
     -------
     np.ndarray
         2d array where each sub array is of the form [Lon, Lat, Zval]
+=======
+>>>>>>> 0524657 (Added seamount ml classes to interface with sklearn libraries)
     """
     out = []
     for line in io:
         line = line.split()
+<<<<<<< HEAD
         if bounds[2] <= float(line[0]) and bounds[3] >= float(line[0]):  # Check Lon bounds
             if bounds[0] <= float(line[1]) and bounds[1] >= float(line[1]):  # Check Lat bounds
                 out.append([float(i) for i in line])
@@ -61,6 +71,16 @@ def filterData(data: np.ndarray, bounds: tuple[float, float, float, float]) -> n
     return data
 
 def plotData(data: pd.DataFrame, colarval="Intensity", op=1.0) -> Figure:
+=======
+        if bounds[2] <= float(line[0]) and bounds[3] >= float(line[0]):  # Check Lat bounds
+            if bounds[0] <= float(line[1]) and bounds[1] >= float(line[1]):  # Check Lon bounds
+                out.append([float(i) for i in line])
+        else:
+            continue
+    return np.array(out)
+
+def plotData(data, colarval="Intensity") -> Figure:
+>>>>>>> 0524657 (Added seamount ml classes to interface with sklearn libraries)
     """
     generates a plot of Lat Lon Intensity data
     Parameters
@@ -72,12 +92,17 @@ def plotData(data: pd.DataFrame, colarval="Intensity", op=1.0) -> Figure:
     fig: Figure
         plot of data
     """
+<<<<<<< HEAD
     fig = px.scatter(data, x="Longitude", y="Latitude", color=colarval, opacity=op)
+=======
+    fig = px.scatter(data, x="Longitude", y="Latitude", color=colarval)
+>>>>>>> 0524657 (Added seamount ml classes to interface with sklearn libraries)
     fig.update_xaxes(
     scaleanchor="y",
     scaleratio=1,
   )
     return fig
+<<<<<<< HEAD
 
 def testNewZone(bounds, data, params=(0.32052631578947366, 13)):
     """
@@ -166,3 +191,5 @@ def exportCentroids(centers, filename=Path('data') / 'centered_all.xy', mountnam
     with open(filename, 'w', encoding='utf-8') as f:
         for ind, val in enumerate(centers):
             f.write(f"{mountname}-{ind} {val[1]} {val[0]}\n")
+=======
+>>>>>>> 0524657 (Added seamount ml classes to interface with sklearn libraries)
