@@ -216,9 +216,13 @@ code/__pycache__/DBSCANSupport.cpython-311.pyc
 code/__pycache__/LocalPath.cpython-311.pyc
 data/curv_32.highpass.xyz
 code/data/curv_32.highpass.xyz
+<<<<<<< HEAD
 all_stms/
 code/data/VGG_SWOT.kmz
 code/data/VGG_V32_SWOTlike.kmz
 *.grd
 *.xyz
 gmt.history
+=======
+*.xyz
+>>>>>>> 0524657 (Added seamount ml classes to interface with sklearn libraries)
