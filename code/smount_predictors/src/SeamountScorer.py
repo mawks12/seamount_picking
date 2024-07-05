@@ -16,7 +16,7 @@ class SeamountScorer:
     """
 
     # TODO: pick a default tolerance value
-    def __init__(self, tolerance: float = 0.5, scoring: str | Callable[..., float] = 'log') -> None:
+    def __init__(self, tolerance: float = 0.1, scoring: str | Callable[..., float] = 'log') -> None:
         """
         Initializes a SeamountScorer object.
 

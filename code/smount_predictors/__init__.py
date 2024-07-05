@@ -6,8 +6,8 @@ supporting functions for reading and working with
 data.
 """
 from .src import SeamountHelp
-from .src.SeamountPredictor import SeamountPredictor
+from .src.SeamountTransformer import SeamountTransformer
 from .src.SeamountScorer import SeamountScorer
 from .src.SeamountCVSplitter import SeamountCVSplitter
 
-__all__ = ['SeamountPredictor', 'SeamountCVSplitter', 'SeamountScorer', 'SeamountHelp']
+__all__ = ['SeamountTransformer', 'SeamountCVSplitter', 'SeamountScorer', 'SeamountHelp']
