@@ -9,10 +9,13 @@ from pathlib import Path
 from typing import Generator
 import numpy as np
 import plotly.express as px
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure as MplFigure
 from plotly.graph_objs._figure import Figure
 import xarray as xr
 from bs4 import BeautifulSoup
 import pandas as pd
+from sklearn.neighbors import BallTree
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -82,7 +85,8 @@ def plotData(data, colarval="Intensity", op=1) -> Figure:
   )
     return fig
 
-def readAndFilterGRD(file_path: Path, lat_range: tuple[float, float], lon_range: tuple[float, float]) -> xr.Dataset:
+def readAndFilterGRD(file_path: Path, lat_range: tuple[float, float] = (-90, 90),
+                     lon_range: tuple[float, float] = (-180, 180)) -> xr.Dataset:
     """
     Reads a grd file into an xarray dataset and filters it based on specified lat and lon ranges.
 
@@ -148,18 +152,62 @@ def readKMLbounds(file: Path) -> tuple[float, float, float, float]:
             maxlon = lon
     return (minlat, maxlat, minlon, maxlon)
 
+def read_seamount_centers(file: Path) -> pd.DataFrame:
+    """
+    Reads a file containing seamount centers and returns a DataFrame with
+    the coordinates and data.
+
+    Parameters
+    ----------
+    file: Path
+        Path to the file containing the seamount centers.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the seamount centers.
+    """
+    with open(file, 'r') as f:
+        soup = BeautifulSoup(f, 'xml')
+    marks = soup.find('Document', {'id': '1'})
+    if marks is None:
+        raise ValueError('No Placemarks found in KML file')
+    marks = marks.find_all('Placemark') # type: ignore
+    centers = {'lat': [], 'lon': [], 'name': []}
+    # print(marks)
+    for mark in marks:
+        # print(mark.find('name'))
+        label = mark.find('name').text  # type: ignore
+        coords = mark.find('coordinates').text.split(',')  # type: ignore
+        centers['lat'].append(float(coords[1]))
+        centers['lon'].append(float(coords[0]))
+        centers['name'].append(label)
+    return pd.DataFrame(centers).set_index('name')
+
 def show_convolutions(results: dict) -> Generator[Figure, None, None]:
     """
     Generates plots for all of the convolutional layers in the results dictionary.
     """
     keyvals = sorted(results.items(), key=lambda x: int(x[0].split('_')[1]) + float(x[0].split('_')[2]) / 100)
     for key, val in keyvals:
-        fig = plot_xarr(val, name=key)
-        yield fig
+        fig = plot_xarr(val, name=key, backend='px')
+        yield fig  # type: ignore
 
-def plot_xarr(data: xr.Dataset, name: str = 'Untitled') -> Figure:
+def plot_xarr(data: xr.Dataset, name: str = 'Untitled', backend: str = 'px') -> Figure | MplFigure:
     """
     Plots an xarray dataset
+    """
+    match backend:
+        case 'px':
+            return plot_xarr_px(data, name)
+        case 'plt':
+            return plot_xarr_plt(data, name)
+        case _:
+            raise ValueError('Invalid backend')
+
+def plot_xarr_px(data: xr.Dataset, name: str = 'Untitled') -> Figure:
+    """
+    Plots an xarray dataset using plotly.
     """
     fig = px.scatter(data.to_dataframe().reset_index(), x='lon', y='lat', color='z', title=name)
     fig.update_layout(
@@ -169,6 +217,20 @@ def plot_xarr(data: xr.Dataset, name: str = 'Untitled') -> Figure:
         yaxis=dict(type='linear', autorange=True),  # Adjust y-axis properties
     )
     return fig
+
+def plot_xarr_plt(data: xr.Dataset, name: str = 'Untitled') -> MplFigure:
+    """
+    Plots an xarray dataset using matplotlib.
+    """
+    plt.figure(figsize=(10, 10))
+    flat_data = data.to_dataframe().reset_index()
+    plt.scatter(flat_data['lon'], flat_data['lat'], c=flat_data['z'])
+    plt.title(name)
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.colorbar()
+    # plt.savefig('test.png', dpi=300)
+    return plt.gcf()
 
 def adjust_lon(data: xr.Dataset | xr.DataArray) -> xr.Dataset | xr.DataArray:
     """
@@ -205,3 +267,14 @@ def xar_from_numpy(data: np.ndarray) -> xr.Dataset:
     })
     ds = xr.Dataset.from_dataframe(df.set_index(['lon', 'lat']))
     return ds
+
+def srtm_to_vgg(srtm: pd.DataFrame, vgg: xr.Dataset) -> xr.Dataset:
+    """
+    Takes labels from the SRTM dataset and assigns them to the VGG dataset.
+    """
+    vgg_pd = vgg.to_dataframe().reset_index()
+    tree = BallTree(srtm[['lon', 'lat']].values, leaf_size=2, metric='haversine')
+    _, indices = tree.query(vgg_pd[['lon', 'lat']].values, k=1)
+    vgg_pd['Labels'] = srtm['Labels'].values[indices]
+    vgg = xr.Dataset.from_dataframe(vgg_pd.set_index(['lon', 'lat']))
+    return vgg

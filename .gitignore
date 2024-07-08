@@ -225,3 +225,4 @@ gmt.history
 *.kmz
 SWOT
 vgg_swot.grd
+*.nc
