@@ -64,7 +64,7 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
             print(numpy_array[np.isnan(numpy_array)])
             raise ValueError("NaN values in the transformed data")
         if hasattr(self.scalar, 'mean_'):
-            numpy_array[:, 2] = self.scalar.transform(numpy_array[:, 2].reshape(-1, 1)).flatten()  # type: ignore
+            numpy_array[:, 2] = self.scalar.transform(numpy_array[:, 2].reshape(-1, 1)).flatten()
         else:
             numpy_array[:, 2] = self.scalar.fit_transform(numpy_array[:, 2].reshape(-1, 1)).flatten()
-        return numpy_array  # type: ignore
+        return numpy_array[:, 2].reshape(-1, 1)  # type: ignore

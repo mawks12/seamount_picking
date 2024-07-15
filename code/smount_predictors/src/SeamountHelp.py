@@ -224,7 +224,7 @@ def plot_xarr_plt(data: xr.Dataset, name: str = 'Untitled') -> MplFigure:
     """
     plt.figure(figsize=(10, 10))
     flat_data = data.to_dataframe().reset_index()
-    plt.scatter(flat_data['lon'], flat_data['lat'], c=flat_data['z'])
+    plt.scatter(flat_data['lon'], flat_data['lat'], c=flat_data['z']) # type: ignore
     plt.title(name)
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
