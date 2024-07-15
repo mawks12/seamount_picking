@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import pickle
 import pandas as pd
 import numpy as np
 import xarray as xr
@@ -21,12 +22,12 @@ pipe = Pipeline([
 ])
 
 param_grid = {
-    'predictor__C': np.logspace(-10, 5, 10),
+    'predictor__C': np.logspace(0, 9, 10),
 }
 
 scorer = SeamountScorer(seamount_centers)
 
-grid = GridSearchCV(pipe, param_grid, cv=SeamountCVSplitter(5), n_jobs=-1, error_score='raise', verbose=2)
+grid = GridSearchCV(pipe, param_grid, cv=SeamountCVSplitter(5), scoring='recall', n_jobs=-1, error_score='raise', verbose=3)
 
 
 points = SeamountHelp.readKMLbounds(Path('data/seamount_training_zone.kml'))
@@ -50,3 +51,13 @@ print((grid.best_score_, grid.best_params_))
 
 
 print(grid.score(X_test, y_test))
+
+with open(Path('out') / 'remote_testing.pkl', 'wb') as fout:
+    pickle.dump(grid, fout)
+
+with open(Path('out') / 'remote_testing.txt', 'w') as f2out:
+    f2out.write(
+        f'best_score: {grid.best_score_} \n' +
+        f'best_params: {grid.best_params_}' + 
+        f'training score: {grid.score(X_test, y_test)}'
+        )
