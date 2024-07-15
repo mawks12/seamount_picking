@@ -85,8 +85,8 @@ def plotData(data, colarval="Intensity", op=1) -> Figure:
   )
     return fig
 
-def readAndFilterGRD(file_path: Path, lat_range: tuple[float, float] = (-90, 90),
-                     lon_range: tuple[float, float] = (-180, 180)) -> xr.Dataset:
+def readAndFilterGRD(file_path: Path, lat_range: tuple[float, float] = (-90, 90), \
+                    lon_range: tuple[float, float] = (-180, 180)) -> xr.Dataset:
     """
     Reads a grd file into an xarray dataset and filters it based on specified lat and lon ranges.
 

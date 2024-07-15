@@ -6,21 +6,21 @@ from typing import Callable
 from sklearn.metrics import log_loss, mean_absolute_error, mean_squared_error
 from sklearn.neighbors import BallTree
 import numpy as np
-import xarray as xr
 
 
 class SeamountScorer:
     """
     Custom class for scoring seamount prediction problems.
-    TODO: identify best scoring method for seamount prediction problems.
     """
 
     # TODO: pick a default tolerance value
-    def __init__(self, tolerance: float = 0.1, scoring: str | Callable[..., float] = 'log') -> None:
+    def __init__(self, y_centers, tolerance: float = 15, scoring: str | Callable[..., float] = 'recall') -> None:
         """
         Initializes a SeamountScorer object.
 
         Args:
+            y_centers (np.ndarray): The true values, as an array of lat, lon pairs representing
+            the center of each seamount.
             tolerance (float): The tolerance value for the scorer.
             scoring (str | Callable[..., float]): The scoring method for the scorer. Can be a string or a callable.
             Default is 'log'. If a callable is passed, the scorer will use a custom scoring method. If a string is
@@ -35,8 +35,9 @@ class SeamountScorer:
         Returns:
             None
         """
-        scoring_methods = ['log', 'mse', 'mae', 'rmse']
+        scoring_methods = {'log', 'mse', 'mae', 'rmse', 'recall'}
         self.tolerance = tolerance
+        self.y_centers = y_centers
         if isinstance(scoring, Callable):
             self.score = scoring
             self.scoring = 'custom'
@@ -57,15 +58,15 @@ class SeamountScorer:
             'log': self._log_loss,
             'mse': self._mse,
             'mae': self._mae,
-            'rmse': self._rmse
+            'rmse': self._rmse,
+            'recall': self._recall
         }
         return scorers[self.scoring]
 
     def _map_nearest(self, y_true, y_pred) -> np.ndarray:
         """
-        Maps the nearest true value to each predicted value, as long
-        as the distance between the predicted value and the true value
-        is less than the tolerance value.
+        Generates predicted values that can be used to calculate the 
+        classifier recall.
 
         Args:
             y_true (np.ndarray): The true values.
@@ -75,15 +76,24 @@ class SeamountScorer:
             np.ndarray: The adjusted predicted values.
         """
         y_true = np.radians(y_true)
-        tree = BallTree(np.array([y_true]), metric='haversine')
-        dist, _ = tree.query(np.array([y_pred]))
-        y_pred = np.array([y_true[i] if d < self.tolerance else y_pred[i] for i, d in enumerate(dist)])
+        y_pred = np.radians(y_pred)
+        tree = BallTree(y_pred, metric='haversine')
+        num_near = tree.query_radius(y_true, r=1.30725161e-5, count_only=True)
+        y_pred = np.where(num_near >= self.tolerance, 1, 0)  # type: ignore
+
+        assert len(y_pred) == len(y_true), "Length mismatch"
         return y_pred
 
-    def __call__(self, estimator, X: xr.DataArray, y_true: np.ndarray) -> float:
-        y_pred = estimator.predict(X)
-        y_pred = self._map_nearest(y_true, y_pred)
-        return self.score(y_true, y_pred)
+    def __call__(self, estimator, X: np.ndarray, y_true: np.ndarray) -> float:
+        if len(y_true) == 0:
+            raise RuntimeError("Split containted not valid samples")
+        y_pred = X[estimator.predict(X) == 1][:, :2]
+        if len(y_pred) == 0:
+            return -1 * float('inf')
+        y_pred = self._map_nearest(self.y_centers, y_pred)
+        if len(y_pred) == 0:
+            return -1 * float('inf')
+        return self.score(np.repeat(1, len(y_pred)), y_pred)
 
     def _log_loss(self, y_true, y_pred) -> float:
         return float(log_loss(y_true, y_pred))
@@ -96,3 +106,6 @@ class SeamountScorer:
 
     def _rmse(self, y_true, y_pred) -> float:
         return np.sqrt(self._mse(y_true, y_pred))
+
+    def _recall(self, y_true, y_pred) -> float:
+        return float(np.sum(y_true == y_pred) / len(y_true))

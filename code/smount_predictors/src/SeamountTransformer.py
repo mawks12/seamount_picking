@@ -3,12 +3,10 @@ Transformer module for using gausian convolution and gradient
 peaks to identify seamounts
 """
 
-from typing import Self
 import numpy as np
-import pandas as pd
 from scipy.signal import convolve
 from scipy.ndimage import gaussian_filter, sobel
-import xarray as xr
+from sklearn.preprocessing import StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -35,32 +33,19 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         Returns:
             None
         """
-        self.xar = None
         self.sig = 1.0
+        self.scalar = StandardScaler()
 
-    def fit(self, X: np.ndarray) -> Self:
+    def fit(self, X=None, y=None) -> 'SeamountTransformer':
         """
-        Fits the SeamountTransformer transformer to the given data.
-
-        Parameters:
-            X (xr.DataArray): The input data array containing the lon, lat, and z variables.
+        Fits the transformer to the input data array.
 
         Returns:
-            self: The fitted SeamountTransformer transformer.
+            self: The SeamountTransformer object.
         """
-        lon = X[:, 0]
-        lat = X[:, 1]
-        zvalue = X[:, 2]
-        df = pd.DataFrame({
-            'lon': lon,
-            'lat': lat,
-            'zvalue': zvalue
-        })
-        ds = xr.Dataset.from_dataframe(df.set_index(['lon', 'lat']))
-        self.xar = ds['zvalue']
         return self
 
-    def transform(self, _=None) -> np.ndarray:
+    def transform(self, X: np.ndarray) -> np.ndarray:
         """
         Transforms the input data array by applying a gaussian filter and a sobel filter,
         and multiplying the gradient with the smoothed data.
@@ -68,15 +53,18 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         Returns:
             transformed: The transformed data array.
         """
-        if not isinstance(self.xar, xr.DataArray):
-            raise AttributeError("Transformer has not been fitted yet")
-        smoothed = gaussian_filter(self.xar.data, sigma=self.sig)
+        # FIXME: return to using xarrays, and simply fill nans with 0 to avoid errors
+        smoothed = gaussian_filter(X, sigma=self.sig)
         y_grad = sobel(smoothed, axis=0)
         x_grad = sobel(smoothed, axis=1)
         grad = np.hypot(x_grad, y_grad)
-        self.xar.data = grad * smoothed
-        self.xar.data = convolve(self.xar.data, self.TEST_CONV_KERN, mode='same')
-        ds_reset = self.xar.to_dataset()
-        df = ds_reset.to_dataframe().reset_index()
-        numpy_array = df[['lon', 'lat', 'zvalue']].to_numpy()
-        return numpy_array
+        numpy_array = smoothed * grad
+        numpy_array = convolve(numpy_array, self.TEST_CONV_KERN, mode='same')
+        if np.isnan(numpy_array).any():
+            print(numpy_array[np.isnan(numpy_array)])
+            raise ValueError("NaN values in the transformed data")
+        if hasattr(self.scalar, 'mean_'):
+            numpy_array[:, 2] = self.scalar.transform(numpy_array[:, 2].reshape(-1, 1)).flatten()  # type: ignore
+        else:
+            numpy_array[:, 2] = self.scalar.fit_transform(numpy_array[:, 2].reshape(-1, 1)).flatten()
+        return numpy_array  # type: ignore
