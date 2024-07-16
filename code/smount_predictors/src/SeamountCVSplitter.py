@@ -65,7 +65,7 @@ class SeamountCVSplitter(BaseCrossValidator):
         """
         if self.data['chosen'].all():  # check if all splits have been generated
             assert self.splits_generated == self.n_splits, "Split count does not match chosen"
-            raise ValueError('All train-test splits have been generated')
+            raise RuntimeError('All train-test splits have been generated')
         if self.splits_generated == self.n_splits - 1:
             assert self.data['chosen'].any(), "Split count mismatch with chosen"
             last_split = self.data[~self.data['chosen']].index
@@ -103,6 +103,8 @@ class SeamountCVSplitter(BaseCrossValidator):
         indecies = np.concatenate([true_indices[0], false_indices[0]])
         # merges the two sets of indices to get the final testing indices with the correct proportion of seamounts
         indices = self.data[~self.data['chosen']].iloc[indecies].index
+        if self.data.loc[indices, 'chosen'].any():
+            raise RuntimeError("Index already chosen")
         self.data.loc[indices, 'chosen'] = True
         self.splits_generated += 1
         return indices
