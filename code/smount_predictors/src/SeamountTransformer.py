@@ -27,7 +27,7 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         [0.04166667, 0.04166667, 0.04166667, 0.04166667, 0.04166667]
         ])
 
-    def __init__(self, sigma=1) -> None:
+    def __init__(self, sigma=1.0) -> None:
         """
         Initializes a SeamountTransformer object.
 
