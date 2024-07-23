@@ -9,7 +9,6 @@ from scipy.ndimage import gaussian_filter, sobel
 from sklearn.preprocessing import StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
-from .SeamountHelp import xar_from_numpy
 
 
 class SeamountTransformer(BaseEstimator, TransformerMixin):
@@ -21,21 +20,21 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
     be passed to a linear kernel SVM for classification.
     """
     TEST_CONV_KERN = np.array([
-        [0.02370913, 0.06444810, 0.06438915, 0.02370913, 0.06444810],
-        [0.06444810, 0.02370913, 0.02370913, 0.06444810, 0.02370913],
-        [0.02370913, 0.02370913, 0.02370913, 0.02370913, 0.02370913],
-        [0.02370913, 0.06444810, 0.06438915, 0.02370913, 0.06444810],
-        [0.06444810, 0.02370913, 0.02370913, 0.06444810, 0.02370913]
+        [0.04166667, 0.04166667, 0.04166667, 0.04166667, 0.04166667],
+        [0.04166667, 0.04166667, 0.04166667, 0.04166667, 0.04166667],
+        [0.04166667, 0.04166667, 0.00000000, 0.04166667, 0.04166667],
+        [0.04166667, 0.04166667, 0.04166667, 0.04166667, 0.04166667],
+        [0.04166667, 0.04166667, 0.04166667, 0.04166667, 0.04166667]
         ])
 
-    def __init__(self) -> None:
+    def __init__(self, sigma=1) -> None:
         """
         Initializes a SeamountTransformer object.
 
         Returns:
             None
         """
-        self.sig = 1.0
+        self.sigma = sigma
         self.scalar = StandardScaler()
 
     def fit(self, X=None, y=None) -> 'SeamountTransformer':
@@ -64,7 +63,8 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
             # They seem to all be true duplicates, so this should be fine, but it's worth investigating
         Xxr = df.to_xarray()
         Xxr['z'] = Xxr['z'].fillna(0)
-        smoothed = gaussian_filter(Xxr['z'].values, sigma=self.sig)
+        x1_sig = self.sigma / np.cos(Xxr['lat'].values.mean())
+        smoothed = gaussian_filter(Xxr['z'].values, sigma=(self.sigma, x1_sig))
         y_grad = sobel(smoothed, axis=0)
         x_grad = sobel(smoothed, axis=1)
         grad = np.hypot(x_grad, y_grad)
