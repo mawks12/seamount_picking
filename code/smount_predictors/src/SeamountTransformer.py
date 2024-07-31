@@ -81,4 +81,4 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
             numpy_array[:, 2] = self.scalar.transform(numpy_array[:, 2].reshape(-1, 1)).flatten()  # type: ignore
         else:
             numpy_array[:, 2] = self.scalar.fit_transform(numpy_array[:, 2].reshape(-1, 1)).flatten()
-        return numpy_array[:, 2].reshape(-1, 1)  # type: ignore
+        return numpy_array #[:, 2].reshape(-1, 1)  # type: ignore
