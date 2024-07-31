@@ -73,7 +73,7 @@ class SeamountCVSplitter(BaseCrossValidator):
             self.splits_generated += 1
             return last_split
         true_tree = BallTree(
-            self.data[(~self.data['chosen']) & (self.data['true'] == 1)]
+            self.data[(~self.data['chosen']) & (self.data['true'] != 0)]
             [['lon', 'lat']].values,
             leaf_size=2, metric='haversine'
             )
@@ -83,7 +83,7 @@ class SeamountCVSplitter(BaseCrossValidator):
             leaf_size=2,
             metric='haversine'
             )
-        true_seed = np.random.choice(self.data[(~self.data['chosen']) & (self.data['true'] == 1)].index)
+        true_seed = np.random.choice(self.data[(~self.data['chosen']) & (self.data['true'] != 0)].index)
         false_seed = false_tree.query(self.data[['lon', 'lat']].loc[true_seed].to_numpy().reshape(1, -1), k=1)[1][0][0]
         # Generates two seed points to grow splits from from, such that each split will have the
         # same proportion of seamounts and non-seamounts as the original data. picks false point
@@ -133,7 +133,7 @@ class SeamountCVSplitter(BaseCrossValidator):
         X = np.array(X)
         y = np.array(y)
         self.split_size = len(X) // self.n_splits
-        self.true_split_size = int((sum(y) / len(y)) * self.split_size)
+        self.true_split_size = int((sum((y != 0)) / len(y)) * self.split_size)
         self.false_split_size = self.split_size - self.true_split_size
         self.data = pd.DataFrame(X[:, :2], columns=['lat', 'lon'])
         self.data['chosen'] = False
