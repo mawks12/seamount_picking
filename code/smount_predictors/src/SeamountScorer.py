@@ -75,13 +75,9 @@ class SeamountScorer:
         Returns:
             np.ndarray: The adjusted predicted values.
         """
-        y_true = np.radians(y_true)
-        y_pred = np.radians(y_pred)
-        tree = BallTree(y_pred, metric='haversine')
-        num_near = tree.query_radius(y_true, r=1.30725161e-5, count_only=True)
-        y_pred = np.where(num_near >= self.tolerance, 1, 0)  # type: ignore
-
-        assert len(y_pred) == len(y_true), "Length mismatch"
+        center_tree = BallTree(np.radians(y_true[:, :2]), leaf_size=2, metric='haversine')
+        center_score = np.repeat(0, len(y_pred))
+        # center_score = center_tree.query(
         return y_pred
 
     def __call__(self, estimator, X: np.ndarray, y_true: np.ndarray) -> float:

@@ -18,7 +18,7 @@ seamount_centers = SeamountHelp.read_seamount_centers(Path('data/seamount_traini
 
 pipe = Pipeline([
     ('trans', SeamountTransformer()),
-    ('predictor', SVC(kernel='linear'))
+    ('predictor', SVC(kernel='linear', class_weight='balanced'))
 ])
 
 param_grid = {
@@ -27,7 +27,7 @@ param_grid = {
 
 scorer = SeamountScorer(seamount_centers)
 
-grid = GridSearchCV(pipe, param_grid, cv=SeamountCVSplitter(5), scoring='recall', n_jobs=-1, error_score='raise', verbose=3)
+grid = GridSearchCV(pipe, param_grid, cv=SeamountCVSplitter(5), n_jobs=-1, error_score='raise', verbose=3)
 
 
 points = SeamountHelp.readKMLbounds(Path('data/seamount_training_zone.kml'))
@@ -52,7 +52,7 @@ print((grid.best_score_, grid.best_params_))
 
 print(grid.score(X_test, y_test))
 
-with open(Path('out') / 'remote_testing.pkl', 'wb') as fout:
+with open(Path('out') / 'script_accuracy_balenced_model.pkl', 'wb') as fout:
     pickle.dump(grid, fout)
 
 with open(Path('out') / 'remote_testing.txt', 'w') as f2out:
