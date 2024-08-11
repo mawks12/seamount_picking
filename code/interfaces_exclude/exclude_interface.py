@@ -5,7 +5,6 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import pygmt
-import gmt_plot
 import sys
 from collections import defaultdict
 from geopy.distance import geodesic
