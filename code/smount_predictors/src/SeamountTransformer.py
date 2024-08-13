@@ -19,13 +19,13 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
     data is the product of the gradient and the smoothed data, and can
     be passed to a linear kernel SVM for classification.
     """
-    TEST_CONV_KERN = np.array([
+    CONV_KERN = np.array([
         [0.125, 0.125, 0.125],
         [0.125, 0.000, 0.125],
         [0.125, 0.125, 0.125]
         ])
 
-    def __init__(self, sigma=1.0) -> None:
+    def __init__(self, sigma=0.6) -> None:
         """
         Initializes a SeamountTransformer object.
 
@@ -52,22 +52,25 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         Returns:
             transformed: The transformed data array.
         """
-        # FIXME: return to using xarrays, and simply fill nans with 0 to avoid errors
         df = pd.DataFrame(X, columns=['lat', 'lon', 'z'])
         df.set_index(['lat', 'lon'], inplace=True)
         data_index = df.index
         if df.index.duplicated().any():
-            df = df[~df.index.duplicated()]  # TODO: Find how duplicates are being created
-            # They seem to all be true duplicates, so this should be fine, but it's worth investigating
+            df = df[~df.index.duplicated()]
         Xxr = df.to_xarray()
         Xxr['z'] = Xxr['z'].fillna(0)
-        x1_sig = self.sigma / np.cos(Xxr['lat'].values.mean())
+        x1_sig = self.sigma / np.cos(np.radians(Xxr['lat'].values.mean()))
+        # Filtering to smooth data, and find gradient peaks
         smoothed = gaussian_filter(Xxr['z'].values, sigma=(self.sigma, x1_sig))
         y_grad = sobel(smoothed, axis=0)
         x_grad = sobel(smoothed, axis=1)
         grad = np.hypot(x_grad, y_grad)
         transed = smoothed * grad
-        numpy_array = convolve(transed, self.TEST_CONV_KERN, mode='same')
+        # Multiplying the gradient with the smoothed data to leave only high gradient
+        # gaussian peaks, such as seamounts
+        numpy_array = convolve(transed, self.CONV_KERN, mode='same')
+        # Previous step leaves rings, so convolve to reconstruct
+        # the center of those rings. NOTE: This does grow the area
         Xxr['z'].values = numpy_array
         df = Xxr.to_dataframe()
         good_vals = df.loc[data_index].reset_index()
