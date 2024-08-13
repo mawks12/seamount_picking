@@ -1,16 +1,12 @@
 
 from pathlib import Path
 import pickle
-import pandas as pd
+from sklearn.cluster import HDBSCAN  # type: ignore
 import numpy as np
-import xarray as xr
-from bs4 import BeautifulSoup
 from smount_predictors import SeamountScorer, SeamountTransformer, SeamountHelp, SeamountCVSplitter
 from sklearn.pipeline import Pipeline
-from sklearn.svm import LinearSVC, SVC
-from sklearn.calibration import CalibratedClassifierCV
-import plotly.express as px
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
 
 
 seamount_centers = SeamountHelp.read_seamount_centers(Path('data/seamount_training_zone.kml'))[['lat', 'lon']].to_numpy()
@@ -52,8 +48,21 @@ print((grid.best_score_, grid.best_params_))
 
 print(grid.score(X_test, y_test))
 
-with open(Path('out') / 'script_accuracy_balenced_model.pkl', 'wb') as fout:
-    pickle.dump(grid, fout)
+
+class PipelinePredictor:
+    def __init__(self, model, clusterer):
+        self.model = model
+        self.clusterer = clusterer
+
+    def predict(self, data):
+        predictions = self.model.predict(data)
+        data['class'] = predictions
+        self.clusterer.fit_predict(data[['lon', 'lat', 'class']])
+        data['cluster'] = self.clusterer.labels_
+        return data
+    
+full_pipeline = PipelinePredictor(grid, HDBSCAN())
+pickle.dump(full_pipeline, open('out/script_accuracy_balenced_model.pkl', 'wb'))
 
 with open(Path('out') / 'remote_testing.txt', 'w') as f2out:
     f2out.write(

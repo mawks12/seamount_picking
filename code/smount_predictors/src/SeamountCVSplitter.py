@@ -22,9 +22,6 @@ class SeamountCVSplitter(BaseCrossValidator):
 
         Args:
             n_splits (int): The number of splits to generate.
-
-        Returns:
-            None
         """
         super().__init__()
         self.n_splits = n_splits

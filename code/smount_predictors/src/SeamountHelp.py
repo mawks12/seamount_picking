@@ -296,7 +296,7 @@ def seamount_radial_match(vgg: pd.DataFrame, seamounts: pd.DataFrame) -> pd.Data
         The VGG dataset with the seamount labels.
     """
     vgg['Labels'] = 0
-    tree = BallTree(np.radians(vgg[['lon', 'lat']].to_numpy()), leaf_size=2, metric='haversine')
+    tree = BallTree(np.radians(vgg[['lon', 'lat']].to_numpy()), leaf_size=2)
     for seamount in seamounts.itertuples():
         _, center_ind = tree.query(np.radians([[seamount.lon, seamount.lat]]), k=1)
         center_ind = center_ind[0][0]
