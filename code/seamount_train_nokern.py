@@ -1,4 +1,4 @@
-
+import xarray as xr
 from pathlib import Path
 import pickle
 from sklearn.cluster import HDBSCAN  # type: ignore
@@ -27,18 +27,17 @@ grid = GridSearchCV(pipe, param_grid, cv=SeamountCVSplitter(5), n_jobs=-1, error
 
 
 points = SeamountHelp.readKMLbounds(Path('data/seamount_training_zone.kml'))
-data = SeamountHelp.readAndFilterGRD(Path('data') / 'vgg_swot.grd', points[:2], points[2:])
+data = xr.open_dataset('out/training_set.nc', engine='netcdf4')
+X = data.to_dataframe().reset_index()
 
-
-y = SeamountHelp.readAndFilterGRD(Path('data') / 'vgg_seamounts_labled.nc')
-X = data.to_dataframe().reset_index().merge(y.to_dataframe().reset_index(), on=['lat', 'lon'], how='left')
-X_test = X[X['lon'] < -112.5583]
-X_train = X[X['lon'] >= -112.5583]
+splitter = SeamountCVSplitter(5)
+X_train, X_test = next(splitter.split(X[['lat', 'lon', 'z']], X['Labels']))
+X_train = X.iloc[X_train]
 y_train = X_train['Labels'].to_numpy()
+X_train = X_train[['lat', 'lon', 'z']].to_numpy()
+X_test = X.iloc[X_test]
 y_test = X_test['Labels'].to_numpy()
-X_train = X_train.drop(columns=['Labels'])[['lat', 'lon', 'z_x']].to_numpy()
-X_test = X_test.drop(columns=['Labels'])[['lat', 'lon', 'z_x']].to_numpy()
-
+X_test = X_test[['lat', 'lon', 'z']].to_numpy()
 
 grid.fit(X_train, y_train)
 
