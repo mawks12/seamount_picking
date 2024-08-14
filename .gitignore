@@ -231,3 +231,4 @@ swot_masked.grd
 code/interfaces_exclude/swot_masked.grd
 vgg_swot_filtered.grd
 VGG_SEIR_masked.grd
+!training_set.nc
