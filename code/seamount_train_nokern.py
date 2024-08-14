@@ -14,7 +14,7 @@ seamount_centers = SeamountHelp.read_seamount_centers(Path('data/seamount_traini
 
 pipe = Pipeline([
     ('trans', SeamountTransformer()),
-    ('predictor', SVC(kernel='linear', class_weight='balanced'))
+    ('predictor', SVC(kernel='rbf', class_weight='balanced'))
 ])
 
 param_grid = {
