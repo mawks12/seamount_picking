@@ -61,7 +61,7 @@ class PipelinePredictor:
         return data
     
 full_pipeline = PipelinePredictor(grid, HDBSCAN())
-pickle.dump(full_pipeline, open('out/script_accuracy_balenced_model.pkl', 'wb'))
+pickle.dump(full_pipeline, open('out/rbf_model.pkl', 'wb'))
 
 with open(Path('out') / 'remote_testing.txt', 'w') as f2out:
     f2out.write(

@@ -1,2 +1,2 @@
-best_score: 0.9537599309502861 
-best_params: {'predictor__C': 1.0}training score: 0.9655172413793104
+best_score: 0.9712141018728346 
+best_params: {'predictor__C': 1.0}training score: 0.9787798408488063
