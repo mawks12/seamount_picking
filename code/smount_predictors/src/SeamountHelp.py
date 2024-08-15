@@ -304,3 +304,15 @@ def seamount_radial_match(vgg: pd.DataFrame, seamounts: pd.DataFrame) -> pd.Data
         indices = tree.query_radius(np.radians(center), r=seamount.radius / 12756)
         vgg.loc[indices[0], 'Labels'] = 1
     return vgg[['lat', 'lon', 'z', 'Labels']]
+
+class PipelinePredictor:
+    def __init__(self, model, clusterer):
+        self.model = model
+        self.clusterer = clusterer
+
+    def predict(self, data):
+        predictions = self.model.predict(data)
+        data['class'] = predictions
+        self.clusterer.fit_predict(data[['lon', 'lat', 'class']])
+        data['cluster'] = self.clusterer.labels_
+        return data
