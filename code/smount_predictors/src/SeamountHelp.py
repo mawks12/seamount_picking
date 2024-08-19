@@ -306,13 +306,48 @@ def seamount_radial_match(vgg: pd.DataFrame, seamounts: pd.DataFrame) -> pd.Data
     return vgg[['lat', 'lon', 'z', 'Labels']]
 
 class PipelinePredictor:
+    """
+    Wrapper to add a clustering step to a model's predictions
+    """
     def __init__(self, model, clusterer):
+        """
+        Constructor for the PipelinePredictor class
+
+        Parameters
+        ----------
+        model: object
+            Model to be used for prediction
+        clusterer: object
+            Clustering algorithm to be used for clustering
+
+        Returns
+        ----------
+        None
+        """
         self.model = model
         self.clusterer = clusterer
 
     def predict(self, data):
+        """
+        Predicts the class of the data
+
+        Parameters
+        ----------
+        data: np.ndarray
+            Data to be predicted
+
+        Returns
+        ----------
+        data: np.ndarray
+            Data with predicted class and cluster
+        """
         predictions = self.model.predict(data)
         data['class'] = predictions
-        self.clusterer.fit_predict(data[['lon', 'lat', 'class']])
-        data['cluster'] = self.clusterer.labels_
+        data['cluster'] = -1
+        data['lat'] = np.radians(data['lat'])
+        data['lon'] = np.radians(data['lon'])
+        self.clusterer.fit_predict(data[['lon', 'lat']][data['class'] == 1])
+        data['cluster'][data['class'] == 1] = self.clusterer.labels_
         return data
+
+
