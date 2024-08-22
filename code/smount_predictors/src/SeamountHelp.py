@@ -346,8 +346,7 @@ class PipelinePredictor:
         data['cluster'] = -1
         data['lat'] = np.radians(data['lat'])
         data['lon'] = np.radians(data['lon'])
-        self.clusterer.fit_predict(data[['lon', 'lat']][data['class'] == 1])
-        data['cluster'][data['class'] == 1] = self.clusterer.labels_
+        if data['class'].sum() > 0:
+            self.clusterer.fit_predict(data[['lon', 'lat']][data['class'] == 1])
+            data['cluster'][data['class'] == 1] = self.clusterer.labels_
         return data
-
-

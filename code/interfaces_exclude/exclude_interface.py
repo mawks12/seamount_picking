@@ -10,7 +10,7 @@ from collections import defaultdict
 from geopy.distance import geodesic
 
 
-def exclude_interface(grd_file, out_file, ascii_file_path='vector_features.xy', threshold = 10):
+def exclude_interface(dataset: xr.Dataset, ascii_file_path='vector_features.xy', threshold = 10):
 
     
     # Reads a .grd file and an ASCII file containing paths, then applies a mask to the grid data
@@ -48,8 +48,8 @@ def exclude_interface(grd_file, out_file, ascii_file_path='vector_features.xy', 
             if lon_min <= lon <= lon_max and lat_min <= lat <= lat_max:
                 return True
         return False
-        
-    data = xr.open_dataset(grd_file)
+
+    data = dataset
     # Extract the latitude and longitude data
     latitudes = data['lat'].values
     longitudes = data['lon'].values
@@ -98,9 +98,8 @@ def exclude_interface(grd_file, out_file, ascii_file_path='vector_features.xy', 
             distance_y = np.abs(latitudes - lat)*111.2 # spacing in km
             distance_x = np.abs(longitudes - lon)*111.2*np.cos(latitudes.mean()/180*np.pi) # spacing in km
             distance = (np.transpose(np.tile(distance_y**2, (distance_x.shape[0],1))) + np.tile(distance_x**2, (distance_y.shape[0],1)))**0.5
-            mask[distance<threshold] = False
+            mask[distance<threshold] = True
 
     # Set the z values to NaN where the mask is False
-    data['z'].values[mask == False] = np.nan
-    data.to_netcdf(out_file)
-    return
+    data['z'].values[mask] = 0
+    return data
