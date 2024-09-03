@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import xarray as xr
 import os
@@ -10,7 +11,7 @@ from collections import defaultdict
 from geopy.distance import geodesic
 
 
-def exclude_interface(dataset: xr.Dataset, ascii_file_path='vector_features.xy', threshold = 10):
+def exclude_interface(dataset: xr.Dataset, ascii_file_path='vector_features.xy', threshold = 10) -> xr.Dataset:
 
     
     # Reads a .grd file and an ASCII file containing paths, then applies a mask to the grid data

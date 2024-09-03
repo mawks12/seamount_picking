@@ -234,3 +234,5 @@ VGG_SEIR_masked.grd
 !training_set.nc
 predictions.csv
 code/data/vgg_swot_masked.grd
+code/out/global_predictions.pkl
+swot*.grd
