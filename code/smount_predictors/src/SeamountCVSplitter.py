@@ -2,7 +2,6 @@
 Splitting module to split the seamounts into training and testing datasets
 """
 
-import warnings
 from sklearn.neighbors import BallTree
 from sklearn.model_selection import BaseCrossValidator
 import numpy as np

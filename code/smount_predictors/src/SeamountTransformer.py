@@ -59,6 +59,8 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
             df = df[~df.index.duplicated()]
         Xxr = df.to_xarray()
         Xxr['z'] = Xxr['z'].fillna(0)
+        # Scaling for y axis. NOTE: since this uses the mean, the larger the area
+        # the less accurate the scaling. Works best in small areas.
         x1_sig = self.sigma / np.cos(np.radians(Xxr['lat'].values.mean()))
         # Filtering to smooth data, and find gradient peaks
         smoothed = gaussian_filter(Xxr['z'].values, sigma=(self.sigma, x1_sig))

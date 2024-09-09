@@ -16,6 +16,7 @@ import xarray as xr
 from bs4 import BeautifulSoup
 import pandas as pd
 from sklearn.neighbors import BallTree
+from sklearn.base import BaseEstimator
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -309,7 +310,7 @@ class PipelinePredictor:
     """
     Wrapper to add a clustering step to a model's predictions
     """
-    def __init__(self, model, clusterer):
+    def __init__(self, model: BaseEstimator, clusterer):
         """
         Constructor for the PipelinePredictor class
 
