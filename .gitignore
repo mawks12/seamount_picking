@@ -237,3 +237,4 @@ code/data/vgg_swot_masked.grd
 land*.grd
 swot*.grd
 *.pkl
+*.grd
