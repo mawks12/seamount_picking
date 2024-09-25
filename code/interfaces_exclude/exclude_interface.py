@@ -60,7 +60,6 @@ def exclude_interface(dataset: xr.Dataset, ascii_file_path='vector_features.xy',
     lat_max = latitudes.max()
 
     # Load the ASCII file containing paths
-    ascii_file_path = 'vector_features.xy'
     paths = defaultdict(list)
     current_path = None
      
@@ -99,8 +98,8 @@ def exclude_interface(dataset: xr.Dataset, ascii_file_path='vector_features.xy',
             distance_y = np.abs(latitudes - lat)*111.2 # spacing in km
             distance_x = np.abs(longitudes - lon)*111.2*np.cos(latitudes.mean()/180*np.pi) # spacing in km
             distance = (np.transpose(np.tile(distance_y**2, (distance_x.shape[0],1))) + np.tile(distance_x**2, (distance_y.shape[0],1)))**0.5
-            mask[distance<threshold] = True
+            mask[distance<threshold] = False
 
     # Set the z values to NaN where the mask is False
-    data['z'].values[mask] = 0
+    data['z'].values[~mask] = 0
     return data
