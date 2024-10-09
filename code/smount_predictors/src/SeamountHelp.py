@@ -293,7 +293,7 @@ def seamount_radial_match(vgg: pd.DataFrame, seamounts: pd.DataFrame) -> pd.Data
     
     Returns
     -------
-    np.ndarray
+    pd.DataFrame
         The VGG dataset with the seamount labels.
     """
     vgg['Labels'] = 0
