@@ -17,6 +17,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from sklearn.neighbors import BallTree
 from sklearn.base import BaseEstimator
+from shapely.geometry import Polygon
+from shapely.geometry import Point
 
 def readCroppedxyz(io,  bounds: tuple[float, float, float, float]) -> np.ndarray:
     """
@@ -306,6 +308,30 @@ def seamount_radial_match(vgg: pd.DataFrame, seamounts: pd.DataFrame) -> pd.Data
         vgg.loc[indices[0], 'Labels'] = 1
     return vgg[['lat', 'lon', 'z', 'Labels']]
 
+def extract_polygon(
+        ds: xr.Dataset,
+        polygon: tuple[
+            tuple[float, float], tuple[float, float], tuple[float, float], tuple[float, float]]
+            ) -> xr.Dataset:
+    """
+    Extracts the polygon enclosed by the given lon lat pairs from the xarray dataset.
+
+    Parameters
+    ----------
+    ds: xr.Dataset
+        The xarray dataset to extract the polygon from.
+    polygon: tuple
+        A tuple of 4 lon lat pairs defining the polygon.
+
+    Returns
+    -------
+    xr.Dataset
+        The extracted polygon as an xarray dataset.
+    """
+
+    poly = Polygon(polygon)
+    mask = np.array([[poly.contains(Point(lon, lat)) for lon in ds['lon'].values] for lat in ds['lat'].values])
+    return ds.where(mask, drop=True)
 class PipelinePredictor:
     """
     Wrapper to add a clustering step to a model's predictions
