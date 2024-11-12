@@ -85,4 +85,4 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         else:
             numpy_array[:, 2] = self.scalar.fit_transform(numpy_array[:, 2].reshape(-1, 1)).flatten()
         assert not (numpy_array[:, 2] == 0).all(), "All values are zero"
-        return numpy_array[:, 2].reshape(-1, 1)  # type: ignore
+        return numpy_array
