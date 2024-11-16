@@ -3,6 +3,8 @@ Transformer module for using gausian convolution and gradient
 peaks to identify seamounts
 """
 
+from typing import Union, overload
+from warnings import warn
 import numpy as np
 from scipy.signal import convolve
 from scipy.ndimage import gaussian_filter, sobel
@@ -44,7 +46,7 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         """
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform_helper(self, X: np.ndarray) -> np.ndarray:
         """
         Transforms the input data array by applying a gaussian filter and a sobel filter,
         and multiplying the gradient with the smoothed data.
@@ -75,7 +77,7 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
         # the center of those rings. NOTE: This does grow the area
         Xxr['z'].values = numpy_array
         df = Xxr.to_dataframe()
-        good_vals = df.loc[data_index].reset_index()
+        good_vals = df.loc[data_index].reset_index()  # TODO: Check if all of the funcitons used here are stable
         numpy_array = good_vals.values
         if np.isnan(numpy_array).any():
             print(numpy_array[np.isnan(numpy_array)])
@@ -86,3 +88,32 @@ class SeamountTransformer(BaseEstimator, TransformerMixin):
             numpy_array[:, 2] = self.scalar.fit_transform(numpy_array[:, 2].reshape(-1, 1)).flatten()
         assert not (numpy_array[:, 2] == 0).all(), "All values are zero"
         return numpy_array
+
+    @overload
+    def transform(self, X: list[np.ndarray]) -> np.ndarray:
+        ...
+
+    @overload
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        ...
+
+    def transform(self, X: Union[np.ndarray, list[np.ndarray]]) -> np.ndarray:
+        """
+        Transforms the input data array by applying a gaussian filter and a sobel filter,
+        and multiplying the gradient with the smoothed data.
+
+        Returns:
+            transformed: The transformed data array.
+        """
+        if isinstance(X, list):
+            transformed = np.array([])
+            for data in X:
+                if data.shape[0] == 0:
+                    warn(
+                        'An empty array was passed to the transformer'
+                    )
+                    continue
+                processed = self.transform_helper(data)
+                transformed = np.append(transformed, processed)
+            return transformed
+        return self.transform_helper(X)
