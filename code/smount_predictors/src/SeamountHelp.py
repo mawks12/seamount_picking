@@ -332,6 +332,7 @@ def extract_polygon(
     poly = Polygon(polygon)
     mask = np.array([[poly.contains(Point(lon, lat)) for lon in ds['lon'].values] for lat in ds['lat'].values])
     return ds.where(mask, drop=True)
+
 class PipelinePredictor:
     """
     Wrapper to add a clustering step to a model's predictions
