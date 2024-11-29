@@ -53,7 +53,7 @@ import pickle
 from sklearn.cluster import DBSCAN
 from smount_predictors.src.SeamountHelp import PipelinePredictor
 
-full_pipeline = PipelinePredictor(pipe, DBSCAN(eps=0.00029088820866630336, min_samples=4, metric='haversine'))
+full_pipeline = PipelinePredictor(search, DBSCAN(eps=0.00029088820866630336, min_samples=4, metric='haversine'))
 pickle.dump(full_pipeline, open('out/3d_model.pkl', 'wb'))
 
 
