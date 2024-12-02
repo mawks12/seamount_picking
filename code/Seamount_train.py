@@ -43,6 +43,7 @@ X = data.to_dataframe().reset_index()[['lat', 'lon' , 'z']]
 
 y = data.to_dataframe().reset_index()['Labels']
 search.fit(X, y)
+print(f'best_params: {search.best_params_}')
 print(f'train score: {search.score(X, y)}')
 
 
