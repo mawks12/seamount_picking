@@ -301,10 +301,10 @@ def seamount_radial_match(vgg: pd.DataFrame, seamounts: pd.DataFrame) -> pd.Data
     vgg['Labels'] = 0
     tree = BallTree(np.radians(vgg[['lon', 'lat']].to_numpy()), leaf_size=2)
     for seamount in seamounts.itertuples():
-        _, center_ind = tree.query(np.radians([[seamount.lon, seamount.lat]]), k=1)
+        _, center_ind = tree.query(np.radians([[seamount.lon, seamount.lat]]), k=1) # type: ignore
         center_ind = center_ind[0][0]
         center = vgg[['lon', 'lat']].iloc[center_ind].values.reshape(1, -1)
-        indices = tree.query_radius(np.radians(center), r=seamount.radius / 12756)
+        indices = tree.query_radius(np.radians(center), r=seamount.radius / 12756) # type: ignore
         vgg.loc[indices[0], 'Labels'] = 1
     return vgg[['lat', 'lon', 'z', 'Labels']]
 
@@ -369,7 +369,7 @@ class PipelinePredictor:
         data: np.ndarray
             Data with predicted class and cluster
         """
-        predictions = self.model.predict(data)
+        predictions = self.model.predict(data) # type: ignore
         data['class'] = predictions
         data['cluster'] = -1
         data['lat'] = np.radians(data['lat'])
