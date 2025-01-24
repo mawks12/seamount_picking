@@ -240,3 +240,5 @@ swot*.grd
 *.grd
 figure_datasets
 Paper
+code/out/grouped_test.csv
+code/out/predictions_grouped.csv
