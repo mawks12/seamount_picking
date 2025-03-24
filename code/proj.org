@@ -1,0 +1,15 @@
+#+title: Proj
+#+startup: inlineimages
+
+
+* Fixing hidden seamounts?
+** Use minumum possible gaussian kernal size?
+ - Alternatively, use small enough kernel to only get very small seamounts and then filter out large seamounts afterwords, since it can be assumed that those seamounts are already detected
+   - NOTE this will fail on edge cases where seamounts are very close to each other
+** How to Identify scaling
+ - Select minumum seamount size and use this parameter?
+** Using blockmedian
+- Use grdmedian in order to get the median seafloor depth at any given point and try reprocessing after multiplying by this value
+ [[file:global_seamounts.py::def scale_input(depth_p, data: xr.xarray):][Function for the blockmedian scaling]]
+ - Also Add some way to scale kernel size such that it coresponds to depth?
+   Function is not passed the model so this would need to be generated and saved somewhere else for the next step to process it
