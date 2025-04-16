@@ -3,9 +3,6 @@
 
 
 * Fixing hidden seamounts?
-** Use minumum possible gaussian kernal size?
- - Alternatively, use small enough kernel to only get very small seamounts and then filter out large seamounts afterwords, since it can be assumed that those seamounts are already detected
-   - NOTE this will fail on edge cases where seamounts are very close to each other
 ** How to Identify scaling
  - Select minumum seamount size and use this parameter?
 ** Using blockmedian
