@@ -15,7 +15,7 @@ with open(filepath, 'r') as fin:
     for ind, line in enumerate(txt):
         line = re.sub(r'^\s+', '', line)
         line = re.sub(r'°$', '', line)
-        line = re.sub(r'°\s{2,3}', ',', line)
+        line = re.sub(r'°\s+', ',', line)
         txt[ind] = line
     txt = "".join(txt)
     with open('newPicked.csv', 'w') as fout:
@@ -31,7 +31,6 @@ mounticon = simplekml.IconStyle(color='ffffff20', scale=0.8, icon=mountic)
 mounticon.color = 'ffffff20'
 mountstyle.iconstyle = mounticon
 for ind, row in filtered.iterrows():
-    ind = ind + 2
     pnt = earth.newpoint(name=f'MH_{ind}', coords=[(row.lon, row.lat)])
     pnt.style = mountstyle
 kml.save('mounts.kml')
