@@ -235,3 +235,7 @@ VGG_SEIR_masked.grd
 *.DS_Store
 /code/ *Minibuf-1*
 /code/*shell*
+/code/data/depth_mask.grd
+/code/data/srtm_swotsize.grd
+/code/data/swot_masked_landmask.grd
+/code/out/global_predictions.pkl
