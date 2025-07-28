@@ -1,0 +1,18 @@
+#+title: CNN Train
+
+* Imports
+#+begin_src python :session :results none
+from pathlib import Path
+import xarray as xr
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from CNN import CNN, train, evaluate
+#+end_src
+
+* Initilization
+#+begin_src python :session :results none
+torch.manual_seed(144)
+
+data_path = Path('')
+data = xr.open_dataset(data_path)
+#+end_src
