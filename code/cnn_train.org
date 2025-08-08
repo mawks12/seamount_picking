@@ -12,6 +12,7 @@ from CNN import CNN, train, evaluate
 * Initilization
 #+begin_src python :session :results none
 torch.manual_seed(144)
+device = torch.device('mps')
 
 data_path = Path('')
 data = xr.open_dataset(data_path)

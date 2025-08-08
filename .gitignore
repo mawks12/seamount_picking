@@ -240,3 +240,6 @@ VGG_SEIR_masked.grd
 /code/data/swot_masked_landmask.grd
 /code/out/global_predictions.pkl
 /*vterm*
+/code/all_pacific_raw.xy
+/code/extracted.csv
+/code/kmlcoords.txt
