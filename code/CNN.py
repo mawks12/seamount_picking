@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import torch
+from torch.utils.data import Sampler
 import torch.nn as nn
 
 device = torch.device('mps')
@@ -15,7 +16,7 @@ class CNN(nn.Module):
         self.conv3 = nn.Conv2d(5, 5, kernel_size)
         self.lin_act = nn.ReLU()
         self.avPool = nn.AveragePool2d(25)
-        self.pool = nn.MaxPool2d(25)
+        self.pool = nn.AveragePool2d(25)
         self.probs = nn.Sigmoid()
 
     def forward(self, x):
@@ -26,7 +27,7 @@ class CNN(nn.Module):
         x = self.lin_act(x)
         x = self.avPool(x)
         x = self.pool(x)
-        x = self.provs(x)
+        x = self.probs(x)
         return x
 
 
@@ -76,3 +77,29 @@ def train(model, trainloader, num_epoch, device):
 
         print(f'Epoch {epoch + 1} completed. Train Loss: {epoch_loss:.3f}, Train Accuracy: {epoch_acc:.2f}%')
     return train_losses, train_accs
+
+
+def evaluate(model, dateloader, device):
+    """Evaluate the model"""
+
+    criterion = nn.CrossEntropyLoss()
+
+    model.eval()
+    runnimg_loss = 0.0
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for data in dataloader:
+            points, labels = data[0].to(device), data[1].to(device)
+
+            outputs = model(points)
+            loss = criterion(outputs, labels)
+            running_loss += loss.item()
+            _, predited = torch.where(outputs > 0.5, 1, 0)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    avg_loss = running_loss / len(dataloader)
+    accuracy = 100 * correct / total
+    return avg_loss, accuracy
