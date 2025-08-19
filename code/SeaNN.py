@@ -3,6 +3,8 @@
 import torch
 from torch.utils.data import Sampler
 import torch.nn as nn
+from torch.utils.data import Dataset
+from torchvision.transforms import v2
 
 device = torch.device('mps')
 
@@ -15,8 +17,8 @@ class CNN(nn.Module):
         self.conv2 = nn.Conv2d(4, 5, kernel_size)
         self.conv3 = nn.Conv2d(5, 5, kernel_size)
         self.lin_act = nn.ReLU()
-        self.avPool = nn.AveragePool2d(25)
-        self.pool = nn.AveragePool2d(25)
+        self.avPool = nn.AvgPool2d(25)
+        self.pool = nn.AvgPool2d(25)
         self.probs = nn.Sigmoid()
 
     def forward(self, x):
@@ -75,7 +77,7 @@ def train(model, trainloader, num_epoch, device):
         train_losses.append(epoch_loss)
         train_accs.append(epoch_acc)
 
-        print(f'Epoch {epoch + 1} completed. Train Loss: {epoch_loss:.3f}, Train Accuracy: {epoch_acc:.2f}%')
+        print(f'Epoch {epoch + 1} of {num_epoch} completed. Train Loss: {epoch_loss:.3f}, Train Accuracy: {epoch_acc:.2f}%')
     return train_losses, train_accs
 
 
@@ -103,3 +105,24 @@ def evaluate(model, dateloader, device):
     avg_loss = running_loss / len(dataloader)
     accuracy = 100 * correct / total
     return avg_loss, accuracy
+
+class SeamountDataset(Dataset):
+    """Seamount Dataset for pytorch"""
+
+   def __init__(self, index_file, vgg_file, transform=v2.RandomCrop):
+       self.index_file = pd.read_csv(index_file)
+       self.vgg_file = vgg_file
+       self.tansform = transform
+       super().__init__()
+       return
+
+   def __len__(self):
+       return self.index_file.shape[0]
+
+   def __getitem__(self, idx):
+       item = xarray.open_dataset(self.index_file.iloc[idx])
+       data = torch.as_tensor(item.z.values)
+       labels = torch.as_tensor(item.label.values)
+       if self.transform:
+           data = self.transform(data)
+       return data, labels

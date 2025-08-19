@@ -1,47 +1,32 @@
 #+title: CNN Train
 
 * Imports
-#+begin_src python :session :results none
+#+begin_src python :session :results none :tangle cnn_train.py
 from pathlib import Path
 import xarray as xr
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torchgeo.samplers import RandomGeoSampler
 from torchgeo.datasets import GeoDataset
-from sklearn.neighbord import BallTree
+from sklearn.neighbors import BallTree
 import pandas as pd
-from CNN import CNN, train, evaluate
+from SeaNN import CNN, train, evaluate
 #+end_src
 
 * Initilization
-#+begin_src python :session :results none
+#+begin_src python :session :results none :tangle cnn_train.py
 torch.manual_seed(144)
 device = torch.device('mps')
 
-data_path = Path('')
+data_path = Path('data/labled_pacific.nc')
 data = xr.open_dataset(data_path)
-
-
-#+end_src
-
-* Data Labeling
-#+begin_src python :session :results none
-labels = pd.read_csv('mount_heights.csv')
-labels['radius'] = (labels['model_height'] / 1000) * 7.278
-
-samples = data.as_numpy()[:, :1]
-tree = BallTree(X=samples)
-for mount in labels.iterrows():
-    idx = tree.query_radius(X=(mount.lon, mount.lat), r=mount.radius)
-    location = samples[idx]
-    data['v'][location] = 1
 #+end_src
 
 * Training
-#+begin_src python :session :results value
+#+begin_src python :session :results value :tangle cnn_train.py
 model = CNN(kernel_size=25)
 
 dataloader = DataLoader(GeoDataset(data), sampler=RandomGeoSampler(data))
 train_loss, train_acc = train(model, dataloader, 20, device)
-avg_loss, accuracy = evaluate(model, dataloader=train_data, device)
+avg_loss, accuracy = evaluate(model, dataloader=train_data, device=device)
 #+end_src
