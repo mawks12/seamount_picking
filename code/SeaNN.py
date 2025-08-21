@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+import os
+from pathlib import Path
+import xarray as xr
+import numpy as np
 import torch
 from torch.utils.data import Sampler
 import torch.nn as nn
@@ -13,12 +17,12 @@ class CNN(nn.Module):
     def __init__(self, kernel_size):
         """Initilize the Network"""
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 4, kernel_size)
-        self.conv2 = nn.Conv2d(4, 5, kernel_size)
-        self.conv3 = nn.Conv2d(5, 5, kernel_size)
+        self.conv1 = nn.Conv2d(1, 3, kernel_size)
+        self.conv2 = nn.Conv2d(3, 5, kernel_size)
+        self.conv3 = nn.Conv2d(5, 3, kernel_size)
         self.lin_act = nn.ReLU()
-        self.avPool = nn.AvgPool2d(25)
-        self.pool = nn.AvgPool2d(25)
+        self.pool = nn.MaxPool1d(5)
+        self.flat = nn.Flatten()
         self.probs = nn.Sigmoid()
 
     def forward(self, x):
@@ -27,8 +31,8 @@ class CNN(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.lin_act(x)
-        x = self.avPool(x)
-        x = self.pool(x)
+        # x = self.pool(x)
+        x = self.reduce(x)
         x = self.probs(x)
         return x
 
@@ -52,9 +56,11 @@ def train(model, trainloader, num_epoch, device):
         for i, data in enumerate(trainloader):
              inputs, labels = data[0].to(device), data[1].to(device)
 
+             print(inputs.shape)
              optim.zero_grad()
 
              outputs = model(inputs)
+             print(outputs.shape, labels.shape)
              loss = loss_func(outputs, labels)
 
              loss.backward()
@@ -81,7 +87,7 @@ def train(model, trainloader, num_epoch, device):
     return train_losses, train_accs
 
 
-def evaluate(model, dateloader, device):
+def evaluate(model, dataloader, device):
     """Evaluate the model"""
 
     criterion = nn.CrossEntropyLoss()
@@ -109,20 +115,22 @@ def evaluate(model, dateloader, device):
 class SeamountDataset(Dataset):
     """Seamount Dataset for pytorch"""
 
-   def __init__(self, index_file, vgg_file, transform=v2.RandomCrop):
-       self.index_file = pd.read_csv(index_file)
-       self.vgg_file = vgg_file
-       self.tansform = transform
-       super().__init__()
-       return
+    def __init__(self, data_dir, vgg_file, transform=v2.RandomCrop(size=20)):
+        self.data_dir = Path(data_dir)
+        self.samples = sorted(os.listdir(data_dir))
+        self.vgg_file = vgg_file
+        self.transform = transform
+        super().__init__()
+        return
 
-   def __len__(self):
-       return self.index_file.shape[0]
+    def __len__(self):
+        return len(self.samples)
 
-   def __getitem__(self, idx):
-       item = xarray.open_dataset(self.index_file.iloc[idx])
-       data = torch.as_tensor(item.z.values)
-       labels = torch.as_tensor(item.label.values)
-       if self.transform:
-           data = self.transform(data)
-       return data, labels
+    def __getitem__(self, idx):
+        item = xr.open_dataset(self.data_dir / self.samples[idx])
+        data = torch.as_tensor(item.z.values)
+        labels = torch.as_tensor(item.Labels.values)
+        assert data.shape == labels.shape
+        # if self.transform:
+        #     data = self.transform(data)
+        return data, labels
