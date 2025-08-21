@@ -18,9 +18,17 @@ class CNN(nn.Module):
         """Initilize the Network"""
         super().__init__()
         self.conv1 = nn.Conv2d(1, 3, kernel_size)
+<<<<<<< HEAD
         self.conv2 = nn.Conv2d(3, 5, kernel_size)
         self.conv3 = nn.Conv2d(5, 3, kernel_size)
         self.lin_act = nn.ReLU()
+=======
+        self.conv1Act = nn.ReLU()
+        self.conv2 = nn.Conv2d(3, 5, kernel_size)
+        self.conv2Act = nn.ReLU()
+        self.conv3 = nn.Conv2d(5, 3, kernel_size)
+        self.conv3Act = nn.ReLU()
+>>>>>>> 20d328f (Updating cnn to fix data shape issues)
         self.pool = nn.MaxPool1d(5)
         self.flat = nn.Flatten()
         self.probs = nn.Sigmoid()
@@ -28,9 +36,15 @@ class CNN(nn.Module):
     def forward(self, x):
         """Forward activation of network"""
         x = self.conv1(x)
+        x = self.conv1Act(x)
         x = self.conv2(x)
+        x = self.conv2Act(x)
         x = self.conv3(x)
+<<<<<<< HEAD
         x = self.lin_act(x)
+=======
+        x = self.conv3Act(x)
+>>>>>>> 20d328f (Updating cnn to fix data shape issues)
         # x = self.pool(x)
         x = self.reduce(x)
         x = self.probs(x)
