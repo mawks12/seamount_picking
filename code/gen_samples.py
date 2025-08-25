@@ -22,7 +22,7 @@ for seamount in mounts.itertuples():
     print(center)
     padding = seamount.radius * 3 + 1000
     lat_len = padding / np.degrees(6378137)
-    lat_bounds = (center[1] - lat_len, center[1] - lat_len)
+    lat_bounds = (center[1] - lat_len, center[1] + lat_len)
     lon_vals = np.degrees(6378137 * np.cos(np.radians(center[1])))
     lon_bounds = (center[0] - lon_vals, center[0] + lon_vals)
     mount_loc = vgg_labels.query(lat=f'lat > {lat_bounds[0]} & lat < {lat_bounds[1]}', lon=f'lon > {lon_bounds[0]} & lon < {lon_bounds[1]}')
