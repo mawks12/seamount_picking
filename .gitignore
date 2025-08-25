@@ -243,3 +243,5 @@ VGG_SEIR_masked.grd
 /code/all_pacific_raw.xy
 /code/extracted.csv
 /code/kmlcoords.txt
+*.grd
+*.csv
