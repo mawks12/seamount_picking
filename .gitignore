@@ -245,3 +245,4 @@ VGG_SEIR_masked.grd
 /code/kmlcoords.txt
 *.grd
 *.csv
+*.swp

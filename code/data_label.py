@@ -6,7 +6,7 @@ import pandas as pd
 from smount_predictors import SeamountHelp 
 
 data_path = Path('data/vgg_swot.grd')
-data = SeamountHelp.readAndFilterGRD(data_path, lon_range=(60, 180))
+data = SeamountHelp.readAndFilterGRD(data_path, lon_range=(-180, 60))
 
 labels = pd.read_csv('data/mount_heights.csv')
 labels['radius'] = (labels['model_height'] / 1000) * 7.278

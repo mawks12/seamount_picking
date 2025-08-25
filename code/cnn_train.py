@@ -1,7 +1,3 @@
-#+title: CNN Train
-
-* Imports
-#+begin_src python :session :results none :tangle cnn_train.py
 from pathlib import Path
 import xarray as xr
 import torch
@@ -11,24 +7,16 @@ from torchgeo.datasets import GeoDataset
 from sklearn.neighbors import BallTree
 import pandas as pd
 from SeaNN import CNN, train, evaluate, SeamountDataset
-#+end_src
 
-* Initilization
-#+begin_src python :session :results none :tangle cnn_train.py
 torch.manual_seed(144)
 device = torch.device('cpu')
 
 data_path = Path('data/labled_pacific.nc')
 data = xr.open_dataset(data_path)
-#+end_src
 
-* Training
-#+begin_src python :session :results value :tangle cnn_train.py
 model = CNN(kernel_size=9)
 
-dataloader = DataLoader(SeamountDataset('data/mount_samples', 'data/vgg_swot.grd'))
+dataloader = DataLoader(SeamountDataset('data/mount_samples', 'data/vgg_swot.grd'), batch_size=1)
 train_loss, train_acc = train(model, dataloader, 20, device)
 avg_loss, accuracy = evaluate(model, dataloader=train_data, device=device)
-#+end_src
-
-#+RESULTS:
+torch.save(model, 'initial_model.pkl')

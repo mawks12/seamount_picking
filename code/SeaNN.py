@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+import os
+from pathlib import Path
+import xarray as xr
+import numpy as np
 import torch
 from torch.utils.data import Sampler
 import torch.nn as nn
@@ -13,22 +17,25 @@ class CNN(nn.Module):
     def __init__(self, kernel_size):
         """Initilize the Network"""
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 4, kernel_size)
-        self.conv2 = nn.Conv2d(4, 5, kernel_size)
-        self.conv3 = nn.Conv2d(5, 5, kernel_size)
-        self.lin_act = nn.ReLU()
-        self.avPool = nn.AvgPool2d(25)
-        self.pool = nn.AvgPool2d(25)
+        self.conv1 = nn.Conv2d(1, 3, kernel_size)
+        self.conv1Act = nn.ReLU()
+        self.conv2 = nn.Conv2d(3, 5, kernel_size)
+        self.conv2Act = nn.ReLU()
+        self.conv3 = nn.Conv2d(5, 3, kernel_size)
+        self.conv3Act = nn.ReLU()
+        self.flat = nn.Conv2d(3, 1, kernel_size)
         self.probs = nn.Sigmoid()
 
     def forward(self, x):
         """Forward activation of network"""
         x = self.conv1(x)
+        x = self.conv1Act(x)
         x = self.conv2(x)
+        x = self.conv2Act(x)
         x = self.conv3(x)
-        x = self.lin_act(x)
-        x = self.avPool(x)
-        x = self.pool(x)
+        x = self.conv3Act(x)
+        x = self.flat(x)
+        #x = self.reduce(x)
         x = self.probs(x)
         return x
 
@@ -54,14 +61,14 @@ def train(model, trainloader, num_epoch, device):
 
              optim.zero_grad()
 
-             outputs = model(inputs)
-             loss = loss_func(outputs, labels)
+             outputs = model(inputs).flatten()
+             loss = loss_func(outputs, labels.flatten()[:outputs.shape[0]])
 
              loss.backward()
              optim.step()
 
              running_loss += loss.item()
-             _, predicted = torch.where(outputs > 0.5, 1, 0)
+             predicted = torch.where(outputs > 0.5, 1, 0)
              total += labels.size(0)
              correct += (predicted == labels).sum().item()
 
@@ -81,7 +88,7 @@ def train(model, trainloader, num_epoch, device):
     return train_losses, train_accs
 
 
-def evaluate(model, dateloader, device):
+def evaluate(model, dataloader, device):
     """Evaluate the model"""
 
     criterion = nn.CrossEntropyLoss()
@@ -109,20 +116,23 @@ def evaluate(model, dateloader, device):
 class SeamountDataset(Dataset):
     """Seamount Dataset for pytorch"""
 
-   def __init__(self, index_file, vgg_file, transform=v2.RandomCrop):
-       self.index_file = pd.read_csv(index_file)
-       self.vgg_file = vgg_file
-       self.tansform = transform
-       super().__init__()
-       return
+    def __init__(self, data_dir, vgg_file, transform=v2.RandomCrop(size=20)):
+        self.data_dir = Path(data_dir)
+        self.samples = sorted(os.listdir(data_dir))
+        self.vgg_file = vgg_file
+        self.transform = transform
+        super().__init__()
+        return
 
-   def __len__(self):
-       return self.index_file.shape[0]
+    def __len__(self):
+        return len(self.samples)
 
-   def __getitem__(self, idx):
-       item = xarray.open_dataset(self.index_file.iloc[idx])
-       data = torch.as_tensor(item.z.values)
-       labels = torch.as_tensor(item.label.values)
-       if self.transform:
-           data = self.transform(data)
-       return data, labels
+    def __getitem__(self, idx):
+        item = xr.open_dataset(self.data_dir / self.samples[idx])
+        data = torch.as_tensor(item.z.values)
+        labels = torch.as_tensor(item.Labels.values)
+        data = torch.reshape(data, (1, data.shape[0], data.shape[1]))
+        labels = torch.reshape(labels, (1, labels.shape[0], labels.shape[1])).type(torch.float64)
+        # if self.transform:
+        #     data = self.transform(data)
+        return data, labels
