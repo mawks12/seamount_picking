@@ -23,8 +23,7 @@ class CNN(nn.Module):
         self.conv2Act = nn.ReLU()
         self.conv3 = nn.Conv2d(5, 3, kernel_size)
         self.conv3Act = nn.ReLU()
-        self.pool = nn.MaxPool1d(5)
-        self.flat = nn.Flatten()
+        self.flat = nn.Conv2d(3, 1, kernel_size)
         self.probs = nn.Sigmoid()
 
     def forward(self, x):
@@ -35,8 +34,8 @@ class CNN(nn.Module):
         x = self.conv2Act(x)
         x = self.conv3(x)
         x = self.conv3Act(x)
-        # x = self.pool(x)
-        x = self.reduce(x)
+        x = self.flat(x)
+        #x = self.reduce(x)
         x = self.probs(x)
         return x
 
@@ -60,18 +59,16 @@ def train(model, trainloader, num_epoch, device):
         for i, data in enumerate(trainloader):
              inputs, labels = data[0].to(device), data[1].to(device)
 
-             print(inputs.shape)
              optim.zero_grad()
 
-             outputs = model(inputs)
-             print(outputs.shape, labels.shape)
-             loss = loss_func(outputs, labels)
+             outputs = model(inputs).flatten()
+             loss = loss_func(outputs, labels.flatten()[:outputs.shape[0]])
 
              loss.backward()
              optim.step()
 
              running_loss += loss.item()
-             _, predicted = torch.where(outputs > 0.5, 1, 0)
+             predicted = torch.where(outputs > 0.5, 1, 0)
              total += labels.size(0)
              correct += (predicted == labels).sum().item()
 
@@ -134,7 +131,8 @@ class SeamountDataset(Dataset):
         item = xr.open_dataset(self.data_dir / self.samples[idx])
         data = torch.as_tensor(item.z.values)
         labels = torch.as_tensor(item.Labels.values)
-        assert data.shape == labels.shape
+        data = torch.reshape(data, (1, data.shape[0], data.shape[1]))
+        labels = torch.reshape(labels, (1, labels.shape[0], labels.shape[1])).type(torch.float64)
         # if self.transform:
         #     data = self.transform(data)
         return data, labels

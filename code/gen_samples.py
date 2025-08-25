@@ -14,7 +14,9 @@ vgg_labels = xr.open_dataset(data_path)
 
 for seamount in mounts.itertuples():
     center = (seamount.lon, seamount.lat)
-    padding = (seamount.radius * 3 + 66600000) / 111000
+    center = vgg_labels.sel(lat=seamount.lat, lon=seamount.lon, method='nearest')
+    center = (center.lon.item(), center.lat.item())
+    padding = 66600000 / 111000
     lat_len = padding
     lat_bounds = (center[1] - lat_len, center[1] + lat_len)
     lon_vals = padding * np.cos(np.radians(center[1]))
