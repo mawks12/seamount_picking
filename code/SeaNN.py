@@ -17,13 +17,13 @@ class CNN(nn.Module):
     def __init__(self, kernel_size):
         """Initilize the Network"""
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 3, kernel_size)
+        self.conv1 = nn.Conv2d(1, 3, kernel_size, padding=4)
         self.conv1Act = nn.ReLU()
-        self.conv2 = nn.Conv2d(3, 5, kernel_size)
+        self.conv2 = nn.Conv2d(3, 5, kernel_size, padding=4)
         self.conv2Act = nn.ReLU()
-        self.conv3 = nn.Conv2d(5, 3, kernel_size)
+        self.conv3 = nn.Conv2d(5, 3, kernel_size, padding=4)
         self.conv3Act = nn.ReLU()
-        self.flat = nn.Conv2d(3, 1, kernel_size)
+        self.flat = nn.Conv2d(3, 1, kernel_size, padding=4)
         self.probs = nn.Sigmoid()
 
     def forward(self, x):
@@ -47,12 +47,13 @@ def train(model, trainloader, num_epoch, device):
     optim = torch.optim.Adam(model.parameters())
 
     model.train()
+    model.to(device)
 
     train_losses = []
     train_accuracies = []
 
     for epoch in range(num_epoch):
-        running_loss = 0.
+        running_loss = 0
         correct = 0
         total = 0
 
@@ -61,16 +62,16 @@ def train(model, trainloader, num_epoch, device):
 
              optim.zero_grad()
 
-             outputs = model(inputs).flatten()
-             loss = loss_func(outputs, labels.flatten()[:outputs.shape[0]])
+             outputs = model(inputs)
+             loss = loss_func(outputs, labels)
 
              loss.backward()
              optim.step()
 
              running_loss += loss.item()
              predicted = torch.where(outputs > 0.5, 1, 0)
-             total += labels.size(0)
-             correct += (predicted == labels).sum().item()
+             total += 1
+             correct += (predicted == labels).sum().item() / labels.shape[0]
 
              if i % 100 == 99:
                 batch_loss = running_loss / 100
@@ -80,12 +81,12 @@ def train(model, trainloader, num_epoch, device):
                 correct = 0
                 total = 0
 
-        epoch_loss, epoch_acc = running_loss / total, 100 * correct / total
+        epoch_loss, epoch_acc = running_loss / total, correct / total
         train_losses.append(epoch_loss)
-        train_accs.append(epoch_acc)
+        train_accuracies.append(epoch_acc)
 
         print(f'Epoch {epoch + 1} of {num_epoch} completed. Train Loss: {epoch_loss:.3f}, Train Accuracy: {epoch_acc:.2f}%')
-    return train_losses, train_accs
+    return train_losses, train_accuracies
 
 
 def evaluate(model, dataloader, device):
@@ -132,7 +133,7 @@ class SeamountDataset(Dataset):
         data = torch.as_tensor(item.z.values)
         labels = torch.as_tensor(item.Labels.values)
         data = torch.reshape(data, (1, data.shape[0], data.shape[1]))
-        labels = torch.reshape(labels, (1, labels.shape[0], labels.shape[1])).type(torch.float64)
+        labels = torch.reshape(labels, (1, labels.shape[0], labels.shape[1])).type(torch.float32)
         # if self.transform:
         #     data = self.transform(data)
         return data, labels

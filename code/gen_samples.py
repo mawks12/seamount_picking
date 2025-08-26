@@ -16,12 +16,15 @@ for seamount in mounts.itertuples():
     _, center_ind = tree.query(np.radians([[seamount.lon, seamount.lat]]), k=1)
     center_ind = center_ind[0][0]
     center = flat_data[['lon', 'lat']].iloc[center_ind].values.flatten()
-    print(center)
     padding = seamount.radius * 3 + 1000
     lat_len = padding / np.degrees(6378137)
     lat_bounds = (center[1] - lat_len, center[1] + lat_len)
     lon_vals = np.degrees(6378137 * np.cos(np.radians(center[1])))
     lon_bounds = (center[0] - lon_vals, center[0] + lon_vals)
-    mount_loc = vgg_labels.query(lat=f'lat > {lat_bounds[0]} & lat < {lat_bounds[1]}', lon=f'lon > {lon_bounds[0]} & lon < {lon_bounds[1]}')
+    print(lon_bounds, lat_bounds)
+    mount_loc = vgg_labels.query(
+            lat=f'lat > {lat_bounds[0]} & lat < {lat_bounds[1]}',
+            lon=f'lon > {lon_bounds[0]} & lon < {lon_bounds[1]}'
+            )
     assert np.all(np.array(mount_loc.z.shape) > 10), f'{padding}, {center}, {seamount.radius}'
     mount_loc.to_netcdf(batched_dir / f'sample_{seamount.number}.nc')
