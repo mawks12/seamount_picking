@@ -246,3 +246,4 @@ VGG_SEIR_masked.grd
 *.grd
 *.csv
 *.swp
+*.png
