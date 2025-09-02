@@ -1,0 +1,38 @@
+#+title: Vis
+
+* model import
+#+begin_src python :session
+import torch
+import matplotlib.pyplot as plt
+import xarray as xr
+
+data_all = xr.open_dataset('data/mount_samples/sample_mh13.nc')
+torch.as_tensor(data_all.z.values)
+# model = torch.load('initial_model.pkl', weights_only=False).to(torch.device('cpu'))
+# predictions = model(data)
+#+end_src
+
+#+RESULTS:
+: tensor([[ -1.7284,  -1.3052,  -0.9109,  ...,  -3.2496,   0.3387,   0.3358],
+:         [ -1.7311,  -1.3083,  -0.8336,  ...,  -2.6361,   0.4471,   1.2750],
+:         [ -1.7354,  -1.2645,  -0.8336,  ...,  -1.9562,   0.3630,   1.8727],
+:         ...,
+:         [  1.0332,   0.4726,  -0.4754,  ...,  -2.4905,  20.9719,  20.7504],
+:         [  0.9997,   0.4726,  -0.4721,  ...,  -7.6003,  12.6618,  13.9493],
+:         [  0.9934,   0.4726,  -0.4681,  ..., -12.2574,   4.5489,   7.0603]])
+
+* make figure
+#+begin_src python :session :results file
+name = 'figure.png'
+figure, axes = plt.subplots(1, 2)
+ax1, ax2 = axes
+plotable = data_all.to_dataframe().reset_index()
+ax1.scatter(plotable['lon'], plotable['lat'], c=plotable['z'])
+# ax2.scatter(plotable['lon'], plotable['lat'], c=plotable['predictions'])
+
+figure.savefig(name)
+name
+#+end_src
+
+#+RESULTS:
+[[file:]]
